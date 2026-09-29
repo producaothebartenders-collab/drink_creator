@@ -60,10 +60,12 @@ O copo não é um passo: entra no montador, com até 5 opções da MATRIZ.
 
 Perfil (sem Refrescante):
 
-- **Doce** — mais adoçante (xarope, purê, licor) do que acidulante
+- **Doce** — adoçante perto de 30 ml e acidulante perto de 15 ml
 - **Amargo** — entra um bitter
-- **Cítrico** — mais acidulante do que adoçante
-- **Equilibrado** — doce e ácido na mesma medida
+- **Cítrico** — acidulante perto de 30 ml e adoçante perto de 15 ml
+- **Equilibrado** — os dois no meio da faixa
+
+Xarope, purê, licor doce e o acidulante ficam entre **15 e 30 ml** quando entram. Todo drink leva algum acidulante nessa faixa.
 - **Herbal / frutado / floral / picante** — a nota correspondente entra na ficha
 - **Amadeirado** — a base sugerida é envelhecida (whisky, conhaque, brandy e afins)
 
@@ -72,8 +74,8 @@ Força:
 - **Suave** — um pouco menos de álcool; a sugestão prefere base de teor mais baixo
 - **Equilibrado** — base por volta de 50 ml
 - **Forte** — um pouco mais de álcool
-- **Refrescante** — entra refrigerante, suco, espumante ou outro alongador
+- **Refrescante** — só esta força leva alongador (refrigerante, suco, espumante, soda). Suave, equilibrado e forte saem sem essa linha
 
-Espuma: uma da lista, nenhuma, ou “Deixa o app escolher”. No montador, até 5 espumas quando há espuma.
+Espuma: só entra na ficha quando a pessoa escolhe uma, ou pede “Deixa o app escolher”. “Sem espuma” (o padrão) deixa a receita sem cobertura. No montador dá para ligar ou tirar a espuma.
 
 O montador calcula a ficha a cada toque. Texto marcado **[BAR]** é inferência fora da regra escrita. Zero álcool usa base de chá, shrub, tisana ou blend. Os 220 sabores e os tipos de destilado da casa permanecem.

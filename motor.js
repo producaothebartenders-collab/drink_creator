@@ -78,7 +78,7 @@ window.CDMotor = (function () {
     if (!s.perfil.length) throw new Error("Selecione 1–2 perfis.");
     if (s.alcool === "sem") s.destilado = null;
     s.forca = FORCAS.includes(s.forca) ? s.forca : "equilibrado";
-    s.espuma = s.espuma || "auto";
+    if (!s.espuma || s.espuma === "nenhuma") s.espuma = "nenhuma";
     s.sabores = s.sabores.slice(0, 3);
     return s;
   }
@@ -321,56 +321,58 @@ window.CDMotor = (function () {
     return (perfil || []).find((p) => p === "doce" || p === "citrico" || p === "equilibrado") || null;
   }
 
+  /** Faixa fechada dos dois papéis que equilibram o drink. */
+  const BAND_MIN = 15;
+  const BAND_MAX = 30;
+  const BAND_MID = 22;
+
+  function inBand(n) {
+    const x = Math.round(Number(n) || 0);
+    if (x < BAND_MIN) return BAND_MIN;
+    if (x > BAND_MAX) return BAND_MAX;
+    return x;
+  }
+
+  /**
+   * Adoçante e acidulante ficam sempre em 15–30 ml.
+   * Doce puxa o doce para 30 e o ácido para 15.
+   * Cítrico puxa o ácido para 30 e o doce para 15.
+   * Equilibrado (e perfil sem essas tags) segura os dois no meio da faixa.
+   * A força mexe na base, não nessa conta.
+   */
   function proportions(forca, family, perfil) {
     const f0 = forca || "equilibrado";
     const f = f0 === "refrescante" ? "equilibrado" : f0;
     let base;
-    let acido;
-    let doce;
     const isLong = ["long", "highball", "collins", "gin-tonic", "mule", "spritz", "mocktail-long"].includes(family);
     const isSpirit = ["spirit-forward", "build"].includes(family);
 
     if (isSpirit) {
-      if (f === "suave") {
-        base = 40; acido = 0; doce = 15;
-      } else if (f === "forte") {
-        base = 60; acido = 0; doce = 10;
-      } else {
-        base = 50; acido = 0; doce = 15;
-      }
+      base = f === "suave" ? 40 : f === "forte" ? 60 : 50;
     } else if (isLong) {
       if (f === "suave") base = 40;
       else if (f === "forte") base = 60;
       else base = 50;
       if (family === "gin-tonic") base = f === "forte" ? 60 : f === "suave" ? 40 : 50;
-      acido = f === "suave" ? 15 : 10;
-      doce = f === "suave" ? 15 : f === "forte" ? 10 : 15;
     } else if (f === "suave") {
-      base = 40; acido = 28; doce = 20;
+      base = 40;
     } else if (f === "forte") {
-      base = 60; acido = 18; doce = 12;
+      base = 60;
     } else {
-      base = 50; acido = 22; doce = 18;
+      base = 50;
     }
 
-    const tags = perfil || [];
-    if (tags.includes("doce")) {
-      doce += 5;
-      acido = Math.max(0, acido - 3);
+    const mode = balanceMode(perfil);
+    let acido = BAND_MID;
+    let doce = BAND_MID;
+    if (mode === "doce") {
+      doce = BAND_MAX;
+      acido = BAND_MIN;
+    } else if (mode === "citrico") {
+      acido = BAND_MAX;
+      doce = BAND_MIN;
     }
-    if (tags.includes("citrico")) acido += 5;
-
-    const mode = balanceMode(tags);
-    if (mode === "equilibrado") {
-      const mid = Math.max(12, Math.round((acido + doce) / 2));
-      acido = mid;
-      doce = mid;
-    } else if (mode === "doce" && doce <= acido) {
-      doce = acido + 5;
-    } else if (mode === "citrico" && acido <= doce) {
-      acido = doce + 5;
-    }
-    return { base, acido, doce };
+    return { base, acido: inBand(acido), doce: inBand(doce) };
   }
 
   function alcoholMl(forca, family, base, perfil) {
@@ -394,7 +396,7 @@ window.CDMotor = (function () {
     if (family === "spirit-forward") return { method: "MEXIDO", detail: "MEXIDO no mixing glass, coagagem simples, servir up ou rocks." };
     if (family === "build") return { method: "MONTADO", detail: "MONTADO direto no copo sobre rock grande; swirl ocasional." };
     if (["long", "highball", "collins", "gin-tonic", "mule", "spritz", "mocktail-long"].includes(family)) {
-      return { method: "MONTADO", detail: "MONTADO no copo com gelo; completar com o alongador; misturar levemente." };
+      return { method: "MONTADO", detail: "MONTADO no copo com gelo; misturar levemente." };
     }
     return { method: "BATIDO", detail: "BATIDO ≥10 s, coagagem dupla, gelar taça, passar tudo para o copo/taça." };
   }
@@ -641,7 +643,6 @@ window.CDMotor = (function () {
 
   function suggestFoams(state, limit) {
     const n = limit || 5;
-    if (state.espuma === "nenhuma") return [];
     const ranked = rankFoams(state).map((f) => ({
       id: f.id,
       label: f.label,
@@ -776,17 +777,9 @@ window.CDMotor = (function () {
     if (perfil.includes("floral")) add(bestFloral(state));
     if (perfil.includes("picante")) add(bestSpice(state));
 
-    const baseGuess = state.alcool === "sem"
-      ? baseRecord(pickZeroBase(state).id, state)
-      : baseRecord(state.destilado || suggestBases(state, 1)[0].id, state);
-    let view = flavorView(state, ids);
-    let family = chooseFamily(state, baseGuess, view);
-    const props = proportions(state.forca, family, perfil);
     const has = (pred) => ids.some(pred);
-    if (props.acido > 0 && !has((id) => roleOf(id) === "acido")) add(bestAcid(state));
-    if (props.doce > 0 && !has((id) => isSweetRole(roleOf(id)) || roleOf(id) === "picante")) add(bestSweet(state));
+    if (!has((id) => roleOf(id) === "acido")) add(bestAcid(state));
     if (perfil.includes("doce") || perfil.includes("citrico") || perfil.includes("equilibrado")) {
-      if (!has((id) => roleOf(id) === "acido")) add(bestAcid(state));
       if (!has((id) => isSweetRole(roleOf(id)))) add(bestSweet(state));
     }
     return ids;
@@ -805,13 +798,17 @@ window.CDMotor = (function () {
     const base = baseRecord(baseId, state);
     const view = flavorView(state, flavorIds);
     let family = chooseFamily(state, base, view);
-    const longish = ["long", "highball", "collins", "gin-tonic", "mule", "spritz", "mocktail-long"].includes(family) || state.forca === "refrescante";
-    const lengthenerId = longish && lengtheners[0] ? lengtheners[0].id : null;
+    const softLen = lengtheners.find((l) => l.kind === "soft" || l.kind === "sparkling");
+    const lengthenerId = state.forca === "refrescante"
+      ? (softLen || lengtheners[0] || { id: "soda" }).id
+      : null;
     const len = getLengthener(lengthenerId, state);
     const shifted = applyLengthenerFamily(family, state, base, view, len);
     family = shifted.family;
     const glasses = suggestGlasses(family);
-    const foamId = state.espuma === "nenhuma" ? null : (foams[0] ? foams[0].id : null);
+    let foamId = null;
+    if (state.espuma === "auto") foamId = foams[0] ? foams[0].id : null;
+    else if (state.espuma && state.espuma !== "nenhuma") foamId = state.espuma;
     const picks = {
       baseId,
       flavorIds,
@@ -851,29 +848,8 @@ window.CDMotor = (function () {
     return Object.keys(map).reduce((acc, key) => acc + (map[key] || 0), 0);
   }
 
-  function enforceBalance(acidMap, sweetMap, perfil, spiceIds) {
-    const mode = balanceMode(perfil);
-    const bump = (map, avoid, delta) => {
-      const keys = Object.keys(map).filter((k) => map[k] > 0 || true);
-      const pref = keys.find((k) => !avoid.includes(k)) || keys[0];
-      if (pref) map[pref] = (map[pref] || 0) + delta;
-    };
-    let acid = sumMap(acidMap);
-    let sweet = sumMap(sweetMap);
-    if (!mode) return;
-    if (mode === "equilibrado") {
-      if (!Object.keys(acidMap).length || !Object.keys(sweetMap).length) return;
-      const mid = Math.max(acid, sweet);
-      if (acid < mid) bump(acidMap, [], mid - acid);
-      if (sweet < mid) bump(sweetMap, spiceIds, mid - sweet);
-      return;
-    }
-    if (mode === "doce" && sweet <= acid && Object.keys(sweetMap).length) {
-      bump(sweetMap, spiceIds, acid - sweet + 5);
-    }
-    if (mode === "citrico" && acid <= sweet && Object.keys(acidMap).length) {
-      bump(acidMap, [], sweet - acid + 5);
-    }
+  function fitBand(ids, total) {
+    return splitTotal(ids, inBand(total));
   }
 
   function barLiquid(id, kind) {
@@ -983,8 +959,10 @@ window.CDMotor = (function () {
     const state = rawState.sabores ? rawState : validate(rawState);
     const safe = picks || {};
     const flavorIds = (safe.flavorIds || state.sabores || []).slice();
-    let lengthener = getLengthener(safe.lengthenerId, state);
-    if (state.forca === "refrescante" && !lengthener) lengthener = getLengthener("soda", state);
+    let lengthener = null;
+    if (state.forca === "refrescante") {
+      lengthener = getLengthener(safe.lengthenerId, state) || getLengthener("soda", state);
+    }
 
     const base = baseRecord(safe.baseId, state);
     const view = flavorView(state, flavorIds);
@@ -1001,38 +979,15 @@ window.CDMotor = (function () {
       if (!byRole[role].includes(id)) byRole[role].push(id);
     });
 
-    const spiceIds = byRole.picante || [];
+    if (!byRole.acido || !byRole.acido.length) {
+      const acidId = bestAcid(state);
+      byRole.acido = [acidId];
+      if (acidId && !flavorIds.includes(acidId)) flavorIds.push(acidId);
+    }
     const sweetIds = []
       .concat(byRole.fruta || [], byRole.doce || [], byRole.floral || []);
-    let doceLeft = props.doce;
-    const spiceMap = {};
-    spiceIds.forEach((id) => {
-      spiceMap[id] = 5;
-      doceLeft = Math.max(0, doceLeft - 5);
-    });
-    const sweetMap = splitTotal(sweetIds, Math.max(0, doceLeft));
-    Object.keys(spiceMap).forEach((id) => {
-      sweetMap[id] = spiceMap[id];
-    });
-    const acidMap = splitTotal(byRole.acido || [], props.acido);
-    const licorCredit = base.category === "licor" ? baseMl : 0;
-    if (licorCredit && balanceMode(state.perfil) === "equilibrado" && Object.keys(acidMap).length) {
-      const target = licorCredit + sumMap(sweetMap);
-      const acidNow = sumMap(acidMap);
-      if (acidNow < target) {
-        const key = Object.keys(acidMap)[0];
-        acidMap[key] += target - acidNow;
-      }
-    } else if (licorCredit && balanceMode(state.perfil) === "citrico" && Object.keys(acidMap).length) {
-      const sweetSide = licorCredit + sumMap(sweetMap);
-      const acidNow = sumMap(acidMap);
-      if (acidNow <= sweetSide) {
-        const key = Object.keys(acidMap)[0];
-        acidMap[key] += sweetSide - acidNow + 5;
-      }
-    } else {
-      enforceBalance(acidMap, sweetMap, state.perfil, spiceIds);
-    }
+    const sweetMap = sweetIds.length ? fitBand(sweetIds, props.doce) : {};
+    const acidMap = fitBand(byRole.acido, props.acido);
 
     const items = [];
     items.push({ nome: base.label, qtd: baseMl, unidade: "ml", role: "base" });
@@ -1052,7 +1007,7 @@ window.CDMotor = (function () {
       items.push({ nome: lineName(id, "corpo"), qtd: q, unidade: "ml", role: "corpo" });
     });
     (byRole.picante || []).forEach((id) => {
-      items.push({ nome: lineName(id, "picante"), qtd: sweetMap[id] || 5, unidade: "ml", role: "picante" });
+      items.push({ nome: lineName(id, "picante"), qtd: 5, unidade: "ml", role: "picante" });
     });
     (byRole.amargo || []).forEach((id) => {
       const dose = bitterDose(family, id, state.perfil);
@@ -1091,10 +1046,11 @@ window.CDMotor = (function () {
 
     const tech = techniqueFor(family);
     let preparo = tech.detail;
+    if (lengthener) preparo = preparo.replace("misturar levemente.", "completar com o alongador; misturar levemente.");
     if (foam) preparo += " Finalizar com a espuma.";
 
     const glass = chooseGlass(family, safe.glassId || "auto");
-    const sweetSum = sumMap(sweetMap) + licorCredit;
+    const sweetSum = sumMap(sweetMap);
     const acidSum = sumMap(acidMap);
 
     const warnings = [];
@@ -1134,14 +1090,14 @@ window.CDMotor = (function () {
     const explain = [];
     explain.push({
       title: "Proporção",
-      text: `Adoçante ${sweetSum} ml · acidulante ${acidSum} ml · base ${baseMl} ml. ${
+      text: `Adoçante ${sweetSum ? sweetSum + " ml" : "fora"} · acidulante ${acidSum} ml · base ${baseMl} ml. Xarope, purê e licor doce ficam entre 15 e 30 ml; o ácido também. ${
         balanceMode(perfil) === "equilibrado"
-          ? "Equilibrado fica na casa de 1:1."
+          ? "Equilibrado segura os dois no meio da faixa."
           : balanceMode(perfil) === "doce"
-            ? "Doce leva mais xarope, purê ou licor do que ácido."
+            ? "Doce puxa o adoçante para 30 ml e o ácido para 15 ml."
             : balanceMode(perfil) === "citrico"
-              ? "Cítrico leva mais acidulante do que adoçante."
-              : "Esqueleto LI/TB da família " + family + "."
+              ? "Cítrico puxa o ácido para 30 ml e o adoçante para 15 ml."
+              : "Sem tag de equilíbrio, os dois papéis ficam no meio da faixa."
       }${perfil.filter((p) => p === "doce" || p === "citrico" || p === "equilibrado").length > 1 ? " [BAR] A primeira tag de equilíbrio manda na conta." : ""}`,
     });
     const forcaTxt = {
