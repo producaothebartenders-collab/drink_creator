@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0c0b0a" />
+  <title>Criador de Drinks · The Bartenders</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app" id="app-root">
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark">Grupo The Bartenders</span>
+        <span class="brand-title">Criador de Drinks</span>
+      </div>
+      <div class="step-indicator" id="step-indicator">TB · Proto</div>
+    </header>
+
+    <nav class="stepper" id="stepper" aria-label="Etapas" style="display:none">
+      <div class="progress" id="progress"></div>
+      <ol class="step-labels" id="step-labels"></ol>
+    </nav>
+
+    <!-- 0 Home -->
+    <section class="screen active" id="screen-home">
+      <div class="hero">
+        <div class="hero-icon" aria-hidden="true">🍸</div>
+        <h1>Monte o drink ideal</h1>
+        <p>Sabores, perfil e força → fichas no padrão TB, com pairing e estrutura de bar.</p>
+        <div class="btn-row home-actions">
+          <button type="button" class="btn btn-primary" id="cta-criar">Criar drink</button>
+          <button type="button" class="btn btn-soft" id="cta-surpresa">Surpreenda-me</button>
+          <button type="button" class="btn btn-ghost" id="cta-zero">Sem álcool</button>
+          <button type="button" class="btn btn-ghost" id="cta-surpresa-zero">Surpresa zero álcool</button>
+        </div>
+      </div>
+      <p class="footer-note">PROTÓTIPO · MOTOR DE REGRAS TB</p>
+    </section>
+
+    <!-- 1 Álcool -->
+    <section class="screen" id="screen-alcool">
+      <h1 class="screen-title">Álcool</h1>
+      <p class="screen-sub">Com ou sem? Se quiser, o app escolhe o destilado pela heurística de pairing.</p>
+      <div class="section-label">Opção</div>
+      <div class="chip-grid" id="alcool-chips"></div>
+      <div id="spirit-section" style="display:none">
+        <div class="section-label">Destilado</div>
+        <div class="chip-grid" id="spirit-chips"></div>
+      </div>
+    </section>
+
+    <!-- 2 Sabores -->
+    <section class="screen" id="screen-sabores">
+      <h1 class="screen-title">Sabores</h1>
+      <p class="screen-sub">Escolha 1 a 3 ingredientes. O primeiro é o protagonista do acorde.</p>
+      <div class="chip-grid" id="sabor-chips"></div>
+      <div class="complements" id="complements"></div>
+    </section>
+
+    <!-- 3 Perfil -->
+    <section class="screen" id="screen-perfil">
+      <h1 class="screen-title">Perfil</h1>
+      <p class="screen-sub">1 ou 2 tags principais — puxam a família estrutural e o equilíbrio.</p>
+      <div class="chip-grid" id="perfil-chips"></div>
+    </section>
+
+    <!-- 4 Força -->
+    <section class="screen" id="screen-forca">
+      <h1 class="screen-title">Força</h1>
+      <p class="screen-sub">Ajusta base, ácido e doce (Liquid Intelligence × doses TB).</p>
+      <div class="chip-grid" id="forca-chips"></div>
+      <p class="hint" id="forca-hint" style="margin-top:14px"></p>
+    </section>
+
+    <!-- 5 Copo -->
+    <section class="screen" id="screen-copo">
+      <h1 class="screen-title">Copo</h1>
+      <p class="screen-sub">Sugestão automática pela família + MATRIZ de volumes. Você pode trocar.</p>
+      <div class="glass-suggest" id="glass-preview"></div>
+      <div class="section-label">Escolher</div>
+      <div class="chip-grid" id="copo-chips"></div>
+    </section>
+
+    <!-- 6 Resultado -->
+    <section class="screen" id="screen-resultado">
+      <div id="resultado-content"></div>
+    </section>
+
+    <div class="nav-footer" id="nav-footer" style="display:none">
+      <button type="button" class="btn btn-ghost" id="btn-back">← Voltar</button>
+      <button type="button" class="btn btn-primary" id="btn-next">Continuar →</button>
+    </div>
+  </div>
+
+  <script src="data.js"></script>
+  <script src="motor.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
