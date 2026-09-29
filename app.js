@@ -506,9 +506,6 @@
 
   function bindHome() {
     $("#cta-criar").onclick = () => startCreate(false);
-    $("#cta-surpresa").onclick = () => surprise(false);
-    $("#cta-zero").onclick = () => startCreate(true);
-    $("#cta-surpresa-zero").onclick = () => surprise(true);
     $("#btn-next").onclick = () => next();
     $("#btn-back").onclick = () => back();
   }
