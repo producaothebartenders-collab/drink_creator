@@ -23,7 +23,7 @@
     sabores: [],
     perfil: [],
     forca: "equilibrado",
-    espuma: "auto",
+    espuma: "nenhuma",
     session: null,
     picks: null,
   };
@@ -135,7 +135,7 @@
     state.sabores = [];
     state.perfil = [];
     state.forca = "equilibrado";
-    state.espuma = "auto";
+    state.espuma = "nenhuma";
     state.session = null;
     state.picks = null;
   }
@@ -524,10 +524,10 @@
       btn.onclick = () => togglePerfil(btn.dataset.p);
     });
     const notes = {
-      doce: "Mais adoçante (xarope, purê, licor) do que acidulante.",
+      doce: "Adoçante perto de 30 ml e acidulante perto de 15 ml. Os dois ficam entre 15 e 30 ml.",
       amargo: "A ficha leva um bitter.",
-      citrico: "Mais acidulante do que adoçante.",
-      equilibrado: "Doce e ácido na mesma medida.",
+      citrico: "Acidulante perto de 30 ml e adoçante perto de 15 ml. Os dois ficam entre 15 e 30 ml.",
+      equilibrado: "Adoçante e acidulante no meio da faixa, os dois entre 15 e 30 ml.",
       herbal: "Entra uma nota herbal.",
       frutado: "Entra fruta.",
       amadeirado: "A base sugerida é envelhecida.",
@@ -588,10 +588,10 @@
       try {
         const top = CDMotor.topFoam(engineInput());
         hint.textContent = top
-          ? `Se deixar vazio, o app sugere ${top.label}, pelo sabor e pelo perfil.`
-          : "O app escolhe uma espuma que conversa com os sabores.";
+          ? `O app escolhe ${top.label} e coloca na ficha.`
+          : "O app escolhe uma espuma e coloca na ficha.";
       } catch (e) {
-        hint.textContent = "O app escolhe uma espuma que conversa com os sabores.";
+        hint.textContent = "O app escolhe uma espuma e coloca na ficha.";
       }
       return;
     }
@@ -807,7 +807,7 @@
     const foamBlock = pools.foams.length
       ? `<section class="pool">
           <h2>Espuma</h2>
-          <p class="hint">Até 5. Toque para trocar. A cobertura entra no fim.</p>
+          <p class="hint">A cobertura só entra na ficha se você escolher uma espuma.</p>
           <div class="chip-grid" id="pool-foams">
             ${chipRow(pools.foams, state.picks.foamId, "data-foam", (f) => f.label)}
             <button type="button" class="chip auto-pick ${state.picks.foamId ? "" : "on"}" data-foam="">Sem espuma</button>
@@ -830,7 +830,7 @@
       </section>
       <section class="pool">
         <h2>Sabores na ficha</h2>
-        <p class="hint">Até 10. Marque o que entra. O perfil puxa o que não pode faltar.</p>
+        <p class="hint">Até 10. Marque o que entra. Com xarope, purê ou licor o acidulante fica entre 15 e 30 ml, salvo nas famílias spirit-forward.</p>
         <div class="chip-grid" id="pool-flavors">
           ${chipRow(pools.flavors, state.picks.flavorIds, "data-flavor", (f) => (f.exotic ? `${f.label} · exótico` : f.label))}
         </div>
@@ -843,14 +843,13 @@
           ${chipRow(pools.glasses, state.picks.glassId, "data-glass", (g) => `${g.name.replace(/Copo |Taça /g, "")}`)}
         </div>
       </section>
-      <section class="pool">
+      ${state.forca === "refrescante" ? `<section class="pool">
         <h2>Alongador</h2>
-        <p class="hint">${state.forca === "refrescante" ? "Força refrescante: escolha refrigerante, suco ou espumante." : "Refrigerante, suco, espumante. Opcional fora da força refrescante."}</p>
+        <p class="hint">Força refrescante: a ficha leva refrigerante, suco, espumante ou soda.</p>
         <div class="chip-grid" id="pool-length">
           ${chipRow(lenItems, state.picks.lengthenerId, "data-len", (l) => l.label)}
-          ${state.forca === "refrescante" ? "" : `<button type="button" class="chip auto-pick ${state.picks.lengthenerId ? "" : "on"}" data-len="">Sem alongador</button>`}
         </div>
-      </section>
+      </section>` : ""}
       <div class="btn-row" style="margin-top:16px">
         <button type="button" class="btn btn-ghost" id="btn-back-build">← Voltar</button>
         <button type="button" class="btn btn-ghost" id="btn-nova">Nova criação</button>
@@ -871,6 +870,10 @@
         const i = arr.indexOf(id);
         if (i >= 0) {
           if (arr.length === 1) return;
+          const next = arr.filter((fid) => fid !== id);
+          const losesAcid = CDMotor.roleOf(id) === "acido" && !next.some((fid) => CDMotor.roleOf(fid) === "acido");
+          const acidOptional = !!(state.session && state.session.ficha && state.session.ficha.estrutura);
+          if (losesAcid && !acidOptional) return;
           arr.splice(i, 1);
         } else arr.push(id);
         btn.classList.toggle("on", arr.includes(id));
@@ -894,18 +897,20 @@
         reassemble();
       };
     });
-    $("#pool-length").querySelectorAll("[data-len]").forEach((btn) => {
-      btn.onclick = () => {
-        const id = btn.dataset.len || null;
-        if (state.forca === "refrescante" && !id) return;
-        state.picks.lengthenerId = id;
-        $("#pool-length").querySelectorAll("[data-len]").forEach((b) => {
-          const bid = b.dataset.len || null;
-          b.classList.toggle("on", bid === state.picks.lengthenerId);
-        });
-        reassemble();
-      };
-    });
+    const lenRoot = $("#pool-length");
+    if (lenRoot) {
+      lenRoot.querySelectorAll("[data-len]").forEach((btn) => {
+        btn.onclick = () => {
+          const id = btn.dataset.len || null;
+          if (!id) return;
+          state.picks.lengthenerId = id;
+          lenRoot.querySelectorAll("[data-len]").forEach((b) => {
+            b.classList.toggle("on", b.dataset.len === state.picks.lengthenerId);
+          });
+          reassemble();
+        };
+      });
+    }
     $("#btn-back-build").onclick = () => back();
     bindLiveControls();
     $("#btn-nova").onclick = () => {
