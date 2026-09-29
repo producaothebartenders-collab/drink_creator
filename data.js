@@ -3,7 +3,7 @@
    heurística de Flavor Bible; o resto fica vazio e o motor usa ponte [BAR].
    Outras fontes parafraseadas: Liquid Intelligence, carta TB, MATRIZ. */
 window.CDData = (function () {
-  /** Lista mestre — 220 nomes. A ordem é a da fonte. */
+  /** Lista mestre — nomes sem marca. A ordem inicial é a da fonte; os doces novos entram no fim. */
   const FLAVOR_NAMES = [
     "Limão", "Limão siciliano", "Limão meyer", "Limão preservado", "Lima", "Folha de limão kaffir",
     "Laranja", "Laranja blood", "Laranja mandarina", "Toranja", "Yuzu", "Bergamota", "Tangerina",
@@ -35,6 +35,9 @@ window.CDData = (function () {
     "Açaí", "Cupuaçu", "Cumaru", "Pitaya", "Jabuticaba", "Timur berry", "Curaçao blue", "Amaretto",
     "Gum nero", "Falernum", "Grenadine", "Bubble gum", "Algodão doce", "Caramelo", "Curry", "Caldo de cana",
     "Tajín", "Frutas vermelhas", "Chá branco", "Bitter artesanal",
+    "Brigadeiro", "Pé de moleque", "Doce de leite", "Crème brûlée", "Marshmallow tostado",
+    "Macaron", "Caramelo salgado", "Beijinho", "Paçoca", "Churros", "Bolo de aniversário",
+    "Tutti-frutti", "Unicórnio", "Blue raspberry", "Leite condensado",
   ];
 
   const SABOR_GROUPS = [
@@ -75,7 +78,7 @@ window.CDData = (function () {
     if (/semente/.test(s)) return "especiaria";
     if (/hortela|manjericao|alecrim|tomilho|coentro|salsa|endro|estragao|salvia|oregano|manjerona|cebolinha|shiso|capim-limao|verbena-limao|hissopo|louro|erva-cidreira|pandan/.test(s)) return "erva";
     if (/noz-moscada|gengibre|canela|cardamomo|cravo|allspice|anis|acafrao|curcuma|cominho|pimenta|paprica|fenugreek|sumac|galanga|chile|chili|wasabi|raiz-forte|mostarda|cumaru|curry|junipero/.test(s)) return "especiaria";
-    if (/^mel$|mel de|maple|agave|melaco|acucar|melado|alcacuz|caramelo|nectar de|baunilha/.test(s)) return "doce";
+    if (/^mel$|mel de|maple|agave|melaco|acucar|melado|alcacuz|caramelo|nectar de|baunilha|brigadeiro|pe de moleque|doce de leite|creme brulee|marshmallow|macaron|beijinho|pacoca|churros|bolo de aniversario|tutti-frutti|unicornio|blue raspberry|leite condensado/.test(s)) return "doce";
     if (/limao|lima|laranja|toranja|yuzu|bergamota|tangerina|kaffir/.test(s)) return "citrico";
     if (/morango|framboesa|amora|mirtilo|cranberry|cereja|groselha|elderberry|berry|frutas vermelhas/.test(s)) return "berry";
     if (/abacaxi|manga|mamao|maracuja|goiaba|lichia|banana|coco|tamarindo|kiwi|carambola|melancia|melao|pitaya|cupuacu|jabuticaba|acai|caldo de cana/.test(s)) return "tropical";
@@ -126,6 +129,104 @@ window.CDData = (function () {
     "flor-de-sabugueiro": { volume: "moderate", affinities: ["limao", "pepino", "hortela", "pera", "framboesa", "melao-cantaloupe"] },
     mel: { volume: "moderate", affinities: ["limao", "gengibre", "alecrim", "lavanda", "maca"] },
     baunilha: { volume: "quiet", affinities: ["coco", "chocolate", "abacaxi", "pessego", "cafe"] },
+    brigadeiro: { volume: "moderate", affinities: ["chocolate", "doce-de-leite", "cafe", "leite-condensado"] },
+    "pe-de-moleque": { volume: "moderate", affinities: ["caramelo", "banana", "cafe", "canela"] },
+    "doce-de-leite": { volume: "moderate", affinities: ["caramelo", "cafe", "baunilha", "leite-condensado"] },
+    "creme-brulee": { volume: "moderate", affinities: ["baunilha", "caramelo", "cafe", "laranja"] },
+    "marshmallow-tostado": { volume: "moderate", affinities: ["baunilha", "chocolate", "caramelo"] },
+    macaron: { volume: "quiet", affinities: ["amendoa", "baunilha", "framboesa", "rosa"] },
+    "caramelo-salgado": { volume: "moderate", affinities: ["caramelo", "cafe", "maca", "chocolate"] },
+    beijinho: { volume: "moderate", affinities: ["coco", "leite-condensado", "cravo", "baunilha"] },
+    pacoca: { volume: "moderate", affinities: ["chocolate", "cafe", "banana", "caramelo"] },
+    churros: { volume: "moderate", affinities: ["canela", "chocolate", "doce-de-leite", "caramelo"] },
+    "bolo-de-aniversario": { volume: "moderate", affinities: ["baunilha", "morango", "chocolate", "leite-condensado"] },
+    "tutti-frutti": { volume: "moderate", affinities: ["morango", "abacaxi", "laranja", "banana"] },
+    unicornio: { volume: "moderate", affinities: ["baunilha", "framboesa", "limao", "algodao-doce"] },
+    "blue-raspberry": { volume: "loud", affinities: ["framboesa", "limao", "curacao-blue"] },
+    "leite-condensado": { volume: "moderate", affinities: ["cafe", "chocolate", "coco", "baunilha"] },
+  };
+
+  /**
+   * 1–2 pares menos óbvios, ainda assim afinidade real (Flavor Bible parafraseado).
+   * Não repetem o miolo óbvio (limão / hortelã / gengibre) quando há outra ponte no livro.
+   */
+  const EXOTIC = {
+    limao: ["cardamomo", "lavanda"],
+    lima: ["capim-limao", "lichia"],
+    laranja: ["cardamomo", "cravo"],
+    toranja: ["canela", "morango"],
+    morango: ["pimenta-do-reino", "pessego"],
+    framboesa: ["pimenta-do-reino", "laranja"],
+    amora: ["pimenta-do-reino", "laranja"],
+    maca: ["tomilho", "noz-moscada"],
+    pera: ["cardamomo", "chocolate"],
+    pessego: ["vinagre-balsamico", "canela"],
+    melancia: ["tomate", "pimenta-do-reino"],
+    "melao-cantaloupe": ["pimenta-do-reino", "coco"],
+    abacaxi: ["capim-limao", "chocolate"],
+    manga: ["cardamomo", "capim-limao"],
+    maracuja: ["chocolate", "capim-limao"],
+    coco: ["banana", "capim-limao"],
+    lichia: ["jasmim", "cardamomo"],
+    hortela: ["chile-jalapeno", "pessego"],
+    manjericao: ["pessego", "chile-jalapeno"],
+    alecrim: ["tomilho", "canela"],
+    coentro: ["tomate", "abacate"],
+    pepino: ["tomate", "coco"],
+    tomate: ["melancia", "pimenta-do-reino"],
+    gengibre: ["cenoura", "canela"],
+    canela: ["chile-jalapeno", "cravo"],
+    cardamomo: ["agua-de-rosas", "coco"],
+    "chile-jalapeno": ["tomate", "laranja"],
+    cafe: ["limao", "amendoa"],
+    chocolate: ["banana", "pera"],
+    lavanda: ["framboesa", "mirtilo"],
+    "flor-de-sabugueiro": ["lichia", "flor-de-laranjeira"],
+    mel: ["tomilho", "cardamomo"],
+    baunilha: ["cardamomo", "canela"],
+    brigadeiro: ["maracuja", "chile-jalapeno"],
+    "pe-de-moleque": ["maca", "laranja"],
+    "doce-de-leite": ["maca", "sal-marinho"],
+    "creme-brulee": ["framboesa", "laranja"],
+    "marshmallow-tostado": ["cafe", "canela"],
+    macaron: ["lavanda", "flor-de-laranjeira"],
+    "caramelo-salgado": ["pera", "laranja"],
+    beijinho: ["maracuja", "cardamomo"],
+    pacoca: ["laranja", "canela"],
+    churros: ["cafe", "laranja"],
+    "bolo-de-aniversario": ["framboesa", "lavanda"],
+    "tutti-frutti": ["manjericao", "cardamomo"],
+    unicornio: ["lichia", "lavanda"],
+    "blue-raspberry": ["pimenta-do-reino", "manjericao"],
+    "leite-condensado": ["limao", "canela"],
+  };
+
+  /** Ponte de grupo só quando o protagonista não tem par exótico nomeado. [BAR] */
+  const EXOTIC_BY_GROUP = {
+    citrico: ["cardamomo", "lavanda"],
+    berry: ["pimenta-do-reino", "vinagre-balsamico"],
+    tropical: ["capim-limao", "cardamomo"],
+    fruta: ["tomilho", "pimenta-do-reino"],
+    erva: ["toranja", "tomate"],
+    floral: ["pera", "lichia"],
+    cafe: ["limao", "coco"],
+    doce: ["laranja", "pimenta-do-reino"],
+    noz: ["laranja", "cafe"],
+    especiaria: ["pera", "laranja"],
+    vegetal: ["gengibre", "coentro"],
+    casa: ["baunilha", "laranja"],
+    outros: ["limao", "mel"],
+  };
+
+  /** Busca: não duplica sabor; só aponta para o que já existe. */
+  const FLAVOR_ALIASES = {
+    "bubble-gum": ["chiclete", "chicletes"],
+    maracuja: ["maracuja azul"],
+    "curacao-blue": ["maracuja azul", "blue curacao"],
+    "bolo-de-aniversario": ["birthday cake", "birthday"],
+    "marshmallow-tostado": ["marshmallow"],
+    "leite-condensado": ["ninho", "leite em po"],
+    "creme-brulee": ["creme brulee", "creme brulée"],
   };
 
   const INGREDIENTS = FLAVOR_NAMES.map((label) => {
@@ -137,6 +238,8 @@ window.CDData = (function () {
       group: inferFlavorGroup(label),
       volume: curated.volume || "moderate",
       affinities: (curated.affinities || []).slice(),
+      exotic: (EXOTIC[id] || []).slice(),
+      aliases: (FLAVOR_ALIASES[id] || []).slice(),
     };
   });
 
@@ -351,6 +454,21 @@ window.CDData = (function () {
     "flor-de-sabugueiro": { juice: null, syrup: "Cordial de flor de sabugueiro", garnish: "Flor de sabugueiro" },
     mel: { juice: null, syrup: "Mel diluído (1:1)", garnish: null },
     baunilha: { juice: null, syrup: "Xarope de baunilha", garnish: null },
+    brigadeiro: { juice: null, syrup: "Calda de brigadeiro", garnish: null },
+    "pe-de-moleque": { juice: null, syrup: "Calda de pé de moleque", garnish: null },
+    "doce-de-leite": { juice: null, syrup: "Doce de leite", garnish: null },
+    "creme-brulee": { juice: null, syrup: "Calda de crème brûlée", garnish: null },
+    "marshmallow-tostado": { juice: null, syrup: "Xarope de marshmallow tostado", garnish: null },
+    macaron: { juice: null, syrup: "Xarope de macaron", garnish: null },
+    "caramelo-salgado": { juice: null, syrup: "Xarope de caramelo salgado", garnish: null },
+    beijinho: { juice: null, syrup: "Calda de beijinho", garnish: null },
+    pacoca: { juice: null, syrup: "Xarope de paçoca", garnish: null },
+    churros: { juice: null, syrup: "Xarope de churros", garnish: null },
+    "bolo-de-aniversario": { juice: null, syrup: "Xarope de bolo de aniversário", garnish: null },
+    "tutti-frutti": { juice: null, syrup: "Xarope tutti-frutti", garnish: null },
+    unicornio: { juice: null, syrup: "Xarope de unicórnio", garnish: null },
+    "blue-raspberry": { juice: null, syrup: "Xarope blue raspberry", garnish: null },
+    "leite-condensado": { juice: null, syrup: "Leite condensado", garnish: null },
   };
 
   const SPIRIT_LABELS = {};
@@ -362,12 +480,13 @@ window.CDData = (function () {
     if (!SPIRIT_LABELS[cat]) SPIRIT_LABELS[cat] = SPIRIT_CATEGORY_LABELS[cat];
   });
 
+  /** Volume da base sem álcool — preferência da casa. O rótulo do suco é fechado no motor. */
   const ZERO_BASES = [
-    { id: "cha-hibisco", label: "Chá de hibisco concentrado" },
-    { id: "cha-verde", label: "Chá verde gelado" },
-    { id: "shrub", label: "Shrub cítrico" },
-    { id: "blend-zero", label: "Blend zero (TB)" },
-    { id: "tisana", label: "Tisana herbal" },
+    { id: "h2oh", label: "H2OH!" },
+    { id: "soda-limonada", label: "Soda limonada" },
+    { id: "suco", label: "Suco" },
+    { id: "espumante-sem-alcool", label: "Espumante sem álcool" },
+    { id: "combo-suco-h2oh", label: "Suco + H2OH!" },
   ];
 
   function getSpirit(id) {
@@ -391,6 +510,17 @@ window.CDData = (function () {
   function getAffinities(id) {
     const ing = getIngredient(id);
     return ing && ing.affinities ? ing.affinities.slice() : [];
+  }
+
+  function getExoticSuggestions(id) {
+    const ing = getIngredient(id);
+    if (!ing) return [];
+    const named = (ing.exotic || []).filter((x) => x !== id && getIngredient(x));
+    if (named.length) {
+      return named.slice(0, 2).map((x) => ({ id: x, source: "LIVRO" }));
+    }
+    const fallback = (EXOTIC_BY_GROUP[ing.group] || []).filter((x) => x !== id && getIngredient(x));
+    return fallback.slice(0, 2).map((x) => ({ id: x, source: "BAR" }));
   }
 
   const FOAMS = [
@@ -456,6 +586,7 @@ window.CDData = (function () {
     ZERO_BASES,
     getIngredient,
     getAffinities,
+    getExoticSuggestions,
     getSpirit,
     spiritCategory,
     spiritRole,
