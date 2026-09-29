@@ -26,6 +26,7 @@
     espuma: "nenhuma",
     session: null,
     picks: null,
+    balanceMode: "warn",
   };
 
   const $ = (sel, el = document) => el.querySelector(sel);
@@ -94,6 +95,7 @@
     try {
       state.session = CDMotor.prepareBuilder(engineInput());
       state.picks = state.session.picks;
+      scrollResultado = true;
       go("resultado");
     } catch (e) {
       console.error(e);
@@ -138,7 +140,10 @@
     state.espuma = "nenhuma";
     state.session = null;
     state.picks = null;
+    state.balanceMode = "warn";
   }
+
+  let scrollResultado = false;
 
   function toggleSabor(id) {
     const i = state.sabores.indexOf(id);
@@ -617,7 +622,14 @@
         return `<li><span class="ing-nome">${escapeHtml(ing.nome)}</span>${qtd}</li>`;
       })
       .join("");
+    const liquido = typeof f.liquidoMl === "number" ? f.liquidoMl : CDMotor.sumLiquidMl(f.ingredientes);
     const totais = `<p class="ficha-totais">Base ${f.baseMl} ml · acidulante ${f.acidSum} ml · adoçante ${f.sweetSum} ml</p>`;
+    const lockOn = state.balanceMode === "lock";
+    const balance = `<fieldset class="balance-mode">
+          <legend>Ao ajustar os ml</legend>
+          <label><input type="radio" name="balance-mode" value="lock" ${lockOn ? "checked" : ""}> <span><strong>Travar proporção</strong> — os outros ml acompanham</span></label>
+          <label><input type="radio" name="balance-mode" value="warn" ${lockOn ? "" : "checked"}> <span><strong>Só avisar</strong> — se o ácido se afastar do doce, avisa sem forçar</span></label>
+        </fieldset>`;
     const tags = (f.paladar || []).map((t) => `<span>${escapeHtml(t)}</span>`).join("");
     const warnings = (r.warnings || [])
       .map((w) => `<p class="aviso">${escapeHtml(w)}</p>`)
@@ -636,12 +648,13 @@
           </span>
         </div>
         <div class="ficha-body">
+          ${balance}
           <ul class="ing-list">${ings}</ul>
+          <p class="ficha-liquido">Total de líquido: ${liquido} ml</p>
           ${totais}
           <div class="ficha-field"><strong>Preparo</strong>${escapeHtml(f.preparo)}</div>
           <div class="ficha-field"><strong>Copo / taça</strong>${escapeHtml(f.copo)} (${f.copoMl} ml)</div>
-          <div class="ficha-field"><strong>Guarnição</strong>${escapeHtml(f.guarnicao)}</div>
-          <div class="ficha-field"><strong>Gelo</strong>${escapeHtml(f.gelo)}</div>
+          <div class="ficha-field"><strong>Guarnição</strong>${escapeHtml(f.guarnicao || "—")}</div>
           ${f.canudo ? `<div class="ficha-field"><strong>Canudo</strong>${escapeHtml(f.canudo)}</div>` : ""}
           <div class="btn-row" style="margin-top:12px">
             <button type="button" class="btn btn-primary" id="btn-export">Exportar receita</button>
@@ -671,6 +684,7 @@
     f.baseMl = base;
     f.acidSum = acid;
     f.sweetSum = sweet;
+    f.liquidoMl = CDMotor.sumLiquidMl(f.ingredientes);
     const exp = (r.explain || []).find((e) => e.title === "Proporção");
     if (exp && exp.text) {
       exp.text = exp.text.replace(
@@ -679,7 +693,7 @@
       );
     }
     const perfil = (r.state && r.state.perfil) || [];
-    const warnings = (r.warnings || []).filter((w) => !/^Perfil (doce|cítrico|equilibrado)/.test(w));
+    const warnings = (r.warnings || []).filter((w) => !/^Perfil (doce|cítrico|equilibrado)/.test(w) && !/^Acidulante longe/.test(w));
     if (!f.estrutura) {
       if (perfil.includes("doce") && !(sweet > acid)) {
         warnings.push("Perfil doce pede mais adoçante (xarope, purê ou licor) do que acidulante.");
@@ -689,6 +703,12 @@
       }
       if (perfil.includes("equilibrado") && (acid === 0 || sweet === 0 || Math.abs(acid - sweet) > 2)) {
         warnings.push("Perfil equilibrado pede doce e ácido na mesma medida.");
+      }
+      if (!perfil.includes("doce") && !perfil.includes("citrico") && !perfil.includes("equilibrado") && acid > 0 && sweet > 0 && Math.abs(acid - sweet) > 10) {
+        warnings.push("Acidulante longe do adoçante.");
+      }
+      if (acid === 0 && sweet > 0) {
+        warnings.push("Acidulante longe do adoçante: o doce ficou sem ácido.");
       }
     }
     r.warnings = warnings;
@@ -701,8 +721,10 @@
     (f.ingredientes || []).forEach((ing) => {
       lines.push(`${ing.nome} — ${qtdText(ing)}`);
     });
+    const liquido = typeof f.liquidoMl === "number" ? f.liquidoMl : CDMotor.sumLiquidMl(f.ingredientes);
+    lines.push("", `Total de líquido: ${liquido} ml`);
     lines.push("", "Preparo", f.preparo || "", "", "Copo / taça", `${f.copo}${f.copoMl ? ` (${f.copoMl} ml)` : ""}`);
-    lines.push("", "Guarnição", f.guarnicao || "", "", "Gelo", f.gelo || "");
+    lines.push("", "Guarnição", f.guarnicao || "");
     if (f.canudo) lines.push("", "Canudo", f.canudo);
     lines.push("");
     return lines.join("\n");
@@ -771,19 +793,137 @@
         const ing = state.session && state.session.ficha && state.session.ficha.ingredientes[Number(btn.dataset.i)];
         const dir = Number(btn.dataset.ml);
         if (!ing || ing.unidade !== "ml" || typeof ing.qtd !== "number" || !dir) return;
-        ing.qtd = Math.max(0, ing.qtd + dir * 5);
+        const prev = ing.qtd;
+        const next = Math.max(0, prev + dir * 5);
+        if (state.balanceMode === "lock" && prev > 0 && next !== prev) {
+          const ratio = next / prev;
+          state.session.ficha.ingredientes.forEach((other) => {
+            if (other === ing || other.unidade !== "ml" || typeof other.qtd !== "number" || other.qtd <= 0) return;
+            let scaled = Math.round((other.qtd * ratio) / 5) * 5;
+            if (scaled === other.qtd) scaled = other.qtd + (next > prev ? 5 : -5);
+            other.qtd = Math.max(5, scaled);
+          });
+        }
+        ing.qtd = next;
         recalcTotals();
         paintLive();
       };
     });
     const exportBtn = $("#btn-export");
     if (exportBtn) exportBtn.onclick = () => exportRecipe();
+    box.querySelectorAll('input[name="balance-mode"]').forEach((radio) => {
+      radio.onchange = () => {
+        if (radio.checked) state.balanceMode = radio.value === "lock" ? "lock" : "warn";
+      };
+    });
   }
 
   function paintLive() {
     const box = $("#live-ficha");
     if (box) box.innerHTML = liveHtml();
     bindLiveControls();
+  }
+
+  function flavorChipText(f) {
+    if (!f) return "";
+    if (f.id === "limao" || f.id === "limao-tahiti") return "Limão tahiti · mais agressivo";
+    if (f.id === "limao-siciliano") return "Limão siciliano · mais suave";
+    return f.exotic ? `${f.label} · exótico` : f.label;
+  }
+
+  function catalogHtml(kind) {
+    return `<div class="catalog" data-catalog="${kind}">
+      <button type="button" class="btn btn-ghost btn-sm catalog-toggle">Cardápio</button>
+      <div class="catalog-panel" hidden>
+        <label class="sr-only" for="catalog-q-${kind}">Buscar no cardápio</label>
+        <input type="search" id="catalog-q-${kind}" placeholder="Buscar no cardápio" autocomplete="off" enterkeyhint="search" />
+        <div class="catalog-list"></div>
+      </div>
+    </div>`;
+  }
+
+  function catalogEntries(kind) {
+    const st = state.session && state.session.state;
+    if (!st) return [];
+    if (kind === "bases") return CDMotor.catalogBases(st).map((b) => ({ id: b.id, label: b.label }));
+    if (kind === "flavors") return CDMotor.catalogFlavors().map((f) => ({ id: f.id, label: flavorChipText(f) }));
+    if (kind === "foams") return CDMotor.catalogFoams().map((f) => ({ id: f.id, label: f.label }));
+    if (kind === "glasses") return CDMotor.catalogGlasses().map((g) => ({ id: g.id, label: g.name }));
+    return [];
+  }
+
+  function catalogIsOn(kind, id) {
+    if (!state.picks) return false;
+    if (kind === "bases") return state.picks.baseId === id;
+    if (kind === "flavors") return state.picks.flavorIds.includes(id);
+    if (kind === "foams") return state.picks.foamId === id;
+    if (kind === "glasses") return state.picks.glassId === id;
+    return false;
+  }
+
+  function paintCatalogList(box) {
+    const kind = box.dataset.catalog;
+    const input = box.querySelector("input");
+    const q = fold((input && input.value) || "");
+    const items = catalogEntries(kind).filter((it) => !q || fold(it.label).includes(q));
+    const list = box.querySelector(".catalog-list");
+    list.innerHTML = items.length
+      ? items.map((it) => `<button type="button" class="catalog-item${catalogIsOn(kind, it.id) ? " on" : ""}" data-id="${escapeHtml(it.id)}">${escapeHtml(it.label)}</button>`).join("")
+      : `<p class="empty">Nenhum item com esse nome.</p>`;
+    list.querySelectorAll("[data-id]").forEach((btn) => {
+      btn.onclick = () => pickFromCatalog(kind, btn.dataset.id);
+    });
+  }
+
+  function pickFromCatalog(kind, id) {
+    if (!state.session || !state.picks || !id) return;
+    const pools = state.session.pools;
+    const st = state.session.state;
+    if (kind === "bases") {
+      const item = CDMotor.catalogBases(st).find((b) => b.id === id);
+      if (!item) return;
+      if (!pools.bases.some((b) => b.id === id)) pools.bases.push(item);
+      state.picks.baseId = id;
+    } else if (kind === "flavors") {
+      const item = CDMotor.catalogFlavors().find((f) => f.id === id);
+      if (!item) return;
+      if (!pools.flavors.some((f) => f.id === id)) {
+        pools.flavors.push({ id: item.id, label: item.label, group: item.group, role: CDMotor.roleOf(item.id), exotic: false, kind: "catalog" });
+      }
+      if (!state.picks.flavorIds.includes(id)) state.picks.flavorIds.push(id);
+      if (CDMotor.isLemonAcid(id)) state.picks.omitAcid = false;
+    } else if (kind === "foams") {
+      const item = CDMotor.catalogFoams().find((f) => f.id === id);
+      if (!item) return;
+      if (!pools.foams.some((f) => f.id === id)) pools.foams.push(item);
+      state.picks.foamId = id;
+    } else if (kind === "glasses") {
+      const item = CDMotor.catalogGlasses().find((g) => g.id === id);
+      if (!item) return;
+      if (!pools.glasses.some((g) => g.id === id)) pools.glasses.push(item);
+      state.picks.glassId = id;
+    }
+    reassemble();
+    renderResultado();
+  }
+
+  function bindCatalogs() {
+    document.querySelectorAll(".catalog").forEach((box) => {
+      const panel = box.querySelector(".catalog-panel");
+      const input = box.querySelector("input");
+      const toggle = box.querySelector(".catalog-toggle");
+      if (!panel || !toggle) return;
+      toggle.onclick = () => {
+        const willOpen = panel.hasAttribute("hidden");
+        document.querySelectorAll(".catalog-panel").forEach((p) => p.setAttribute("hidden", ""));
+        if (!willOpen) return;
+        panel.removeAttribute("hidden");
+        if (input) input.value = "";
+        paintCatalogList(box);
+        if (input) input.focus();
+      };
+      if (input) input.oninput = () => paintCatalogList(box);
+    });
   }
 
   function chipRow(items, selected, attr, labelOf) {
@@ -804,16 +944,15 @@
     }
     const pools = state.session.pools;
     const baseTitle = state.alcool === "sem" ? "Base sem álcool" : "Base alcoólica";
-    const foamBlock = pools.foams.length
-      ? `<section class="pool">
+    const foamBlock = `<section class="pool">
           <h2>Espuma</h2>
-          <p class="hint">A cobertura só entra na ficha se você escolher uma espuma.</p>
+          <p class="hint">A cobertura só entra na ficha se você escolher uma espuma. O cardápio lista todas.</p>
           <div class="chip-grid" id="pool-foams">
             ${chipRow(pools.foams, state.picks.foamId, "data-foam", (f) => f.label)}
             <button type="button" class="chip auto-pick ${state.picks.foamId ? "" : "on"}" data-foam="">Sem espuma</button>
           </div>
-        </section>`
-      : "";
+          ${catalogHtml("foams")}
+        </section>`;
     const lenItems = pools.lengtheners.slice();
     root.innerHTML = `
       <div class="result-header">
@@ -823,25 +962,28 @@
       <div id="live-ficha">${liveHtml()}</div>
       <section class="pool">
         <h2>${baseTitle}</h2>
-        <p class="hint">Até 5 sugestões. Uma base por vez.</p>
+        <p class="hint">${state.alcool === "sem" ? "Até 5 sugestões. O cardápio abre H2OH!, soda limonada, suco e espumante sem álcool." : "Até 5 sugestões. Uma base por vez. O cardápio abre qualquer base da casa."}</p>
         <div class="chip-grid" id="pool-bases">
           ${chipRow(pools.bases, state.picks.baseId, "data-base", (b) => b.label)}
         </div>
+        ${catalogHtml("bases")}
       </section>
       <section class="pool">
         <h2>Sabores na ficha</h2>
-        <p class="hint">Até 10. Marque o que entra. Com xarope, purê ou licor o acidulante fica entre 15 e 30 ml, salvo nas famílias spirit-forward.</p>
+        <p class="hint">Até 20. Cada sugestão tem pairing com o protagonista. Dá para tirar o limão. O cardápio abre a lista inteira.</p>
         <div class="chip-grid" id="pool-flavors">
-          ${chipRow(pools.flavors, state.picks.flavorIds, "data-flavor", (f) => (f.exotic ? `${f.label} · exótico` : f.label))}
+          ${chipRow(pools.flavors, state.picks.flavorIds, "data-flavor", flavorChipText)}
         </div>
+        ${catalogHtml("flavors")}
       </section>
       ${foamBlock}
       <section class="pool">
         <h2>Copo</h2>
-        <p class="hint">Até 5 da MATRIZ. O primeiro é o sugerido para o serviço.</p>
+        <p class="hint">Até 5 da MATRIZ. O primeiro é o sugerido. O cardápio abre os outros copos.</p>
         <div class="chip-grid" id="pool-glasses">
           ${chipRow(pools.glasses, state.picks.glassId, "data-glass", (g) => `${g.name.replace(/Copo |Taça /g, "")}`)}
         </div>
+        ${catalogHtml("glasses")}
       </section>
       ${state.forca === "refrescante" ? `<section class="pool">
         <h2>Alongador</h2>
@@ -869,13 +1011,14 @@
         const arr = state.picks.flavorIds;
         const i = arr.indexOf(id);
         if (i >= 0) {
-          if (arr.length === 1) return;
-          const next = arr.filter((fid) => fid !== id);
-          const losesAcid = CDMotor.roleOf(id) === "acido" && !next.some((fid) => CDMotor.roleOf(fid) === "acido");
-          const acidOptional = !!(state.session && state.session.ficha && state.session.ficha.estrutura);
-          if (losesAcid && !acidOptional) return;
+          const lemon = CDMotor.isLemonAcid(id);
+          if (arr.length === 1 && !lemon) return;
           arr.splice(i, 1);
-        } else arr.push(id);
+          if (lemon && !arr.some((fid) => CDMotor.isLemonAcid(fid))) state.picks.omitAcid = true;
+        } else {
+          arr.push(id);
+          if (CDMotor.isLemonAcid(id)) state.picks.omitAcid = false;
+        }
         btn.classList.toggle("on", arr.includes(id));
         reassemble();
       };
@@ -913,11 +1056,15 @@
     }
     $("#btn-back-build").onclick = () => back();
     bindLiveControls();
+    bindCatalogs();
     $("#btn-nova").onclick = () => {
       resetChoices();
       go("home");
     };
-    window.scrollTo(0, 0);
+    if (scrollResultado) {
+      scrollResultado = false;
+      window.scrollTo(0, 0);
+    }
   }
 
   function bindHome() {

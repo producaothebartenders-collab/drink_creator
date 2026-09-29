@@ -577,11 +577,91 @@ h1.screen-title {
 }
 .ml-btn:hover { border-color: var(--gold-dim); }
 .ml-btn:active { transform: scale(0.96); }
+.ficha-liquido {
+  margin: 2px 0 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
 .ficha-totais {
   margin: 4px 0 14px;
   font-size: 12px;
   letter-spacing: 0.04em;
   color: var(--gold-soft);
+}
+.balance-mode {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 8px 12px 10px;
+  margin: 0 0 12px;
+}
+.balance-mode legend {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--gold-dim);
+  padding: 0 4px;
+}
+.balance-mode label {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  font-size: 13px;
+  line-height: 1.35;
+  margin-top: 6px;
+  cursor: pointer;
+}
+.balance-mode input {
+  margin-top: 2px;
+  accent-color: var(--gold);
+}
+.catalog { margin-top: 10px; }
+.catalog-toggle { width: auto; }
+.catalog-panel {
+  margin-top: 8px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg-3);
+}
+.catalog-panel[hidden] { display: none !important; }
+.catalog-panel input[type="search"] {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+}
+.catalog-panel input[type="search"]:focus {
+  outline: none;
+  border-color: var(--gold);
+}
+.catalog-list {
+  max-height: 240px;
+  overflow: auto;
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.catalog-item {
+  text-align: left;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.catalog-item:hover { border-color: var(--gold-dim); }
+.catalog-item.on {
+  color: var(--gold-soft);
+  background: rgba(201, 162, 39, 0.12);
 }
 .comp-chip.exotic { color: var(--text); border-color: var(--gold-dim); }
 .exotic-tag { color: var(--gold) !important; }
