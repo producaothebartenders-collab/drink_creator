@@ -144,6 +144,7 @@ window.CDData = (function () {
     unicornio: { volume: "moderate", affinities: ["baunilha", "framboesa", "limao", "algodao-doce"] },
     "blue-raspberry": { volume: "loud", affinities: ["framboesa", "limao", "curacao-blue"] },
     "leite-condensado": { volume: "moderate", affinities: ["cafe", "chocolate", "coco", "baunilha"] },
+    "limao-siciliano": { volume: "moderate", affinities: ["mel", "baunilha", "tomilho", "lavanda", "hortela", "pera", "manjericao", "flor-de-sabugueiro"] },
   };
 
   /**
@@ -227,6 +228,9 @@ window.CDData = (function () {
     "marshmallow-tostado": ["marshmallow"],
     "leite-condensado": ["ninho", "leite em po"],
     "creme-brulee": ["creme brulee", "creme brulée"],
+    limao: ["limão tahiti", "tahiti", "lima tahiti"],
+    "limao-siciliano": ["siciliano", "lemon", "limão siciliano"],
+    "flor-de-sabugueiro": ["elderflower", "elder flower", "sabugueiro"],
   };
 
   const INGREDIENTS = FLAVOR_NAMES.map((label) => {
@@ -242,6 +246,273 @@ window.CDData = (function () {
       aliases: (FLAVOR_ALIASES[id] || []).slice(),
     };
   });
+
+  const limaoRow = INGREDIENTS.find((i) => i.id === "limao");
+  if (limaoRow) limaoRow.label = "Limão tahiti";
+
+  /**
+   * Pares a mais, ainda culinários (Flavor Bible / coquetelaria clássica), para o
+   * pool da ficha chegar perto de 20 sem cair na ponte genérica [BAR].
+   * Uma linha "id: a, b, c" liga o protagonista a cada parceiro. A leitura é simétrica.
+   */
+  const PAIR_EXTRA_TEXT = `
+limao: limao-siciliano, framboesa, cha-preto, tomilho, ruibarbo, hibisco
+limao-siciliano: mel, baunilha, tomilho, lavanda, hortela, pera, manjericao, flor-de-sabugueiro, gengibre, pessego, framboesa, camomila, alecrim, cha-preto, morango, cardamomo, lima, mel-de-laranjeira
+limao-meyer: mel, gengibre, hortela, baunilha, tomilho, lavanda, framboesa, pessego, flor-de-sabugueiro, manjericao, limao
+limao-preservado: mel, gengibre, cardamomo, canela, pimenta-do-reino, coentro, chile-jalapeno, hortela, iogurte
+folha-de-limao-kaffir: gengibre, capim-limao, coco, chile-thai, coentro, lima, manga, hortela, pandan, galanga
+laranja: morango, cardamomo, cravo, hortela, alecrim, flor-de-sabugueiro, baunilha, chocolate, cafe
+laranja-blood: chocolate, cafe, canela, roma, hortela, gengibre, cardamomo, baunilha, morango, cravo
+laranja-mandarina: chocolate, canela, gengibre, hortela, cravo, baunilha, cranberry, cardamomo, mel, cafe
+yuzu: gengibre, mel, hortela, pepino, shiso, pimenta-sichuan, flor-de-sabugueiro, pera, wasabi, shoyu, limao, manga
+bergamota: mel, lavanda, baunilha, cha-preto, tomilho, flor-de-laranjeira, limao, cardamomo, pera, gengibre
+tangerina: canela, cravo, chocolate, gengibre, hortela, cranberry, baunilha, cardamomo, mel, laranja
+toranja: morango, alecrim, flor-de-sabugueiro, manjericao, canela, limao, hortela, mel
+toranja-rosa: mel, hortela, gengibre, morango, alecrim, flor-de-sabugueiro, pepino, manjericao, limao, baunilha
+lima: limao, flor-de-sabugueiro, manjericao, mel, morango, cardamomo
+lima-key: hortela, gengibre, coco, abacaxi, manga, coentro, chile-jalapeno, mel, limao, hortela
+casca-de-laranja: chocolate, cafe, canela, cardamomo, baunilha, cravo, laranja, anis-estrelado
+casca-de-limao: gengibre, hortela, mel, baunilha, tomilho, lavanda, limao, cardamomo
+morango: framboesa, laranja, chocolate, amendoa, coco, gengibre, vinagre-balsamico, rosa, flor-de-sabugueiro, ruibarbo, hibisco, abacaxi, leite-condensado, canela, cafe, amora, mirtilo
+framboesa: morango, chocolate, limao, rosa, flor-de-sabugueiro, baunilha, pessego, vinagre-balsamico, amendoa, lavanda, hibisco, laranja
+amora: morango, limao, baunilha, pessego, canela, mel, laranja, hortela, violeta, maca
+mirtilo: limao, lavanda, hortela, baunilha, limao-siciliano, mel, pessego, gengibre, violeta, limao, iogurte, limao
+cranberry: laranja, hortela, gengibre, canela, maca, mel, noz, limao, tangerina, alecrim
+cereja: chocolate, baunilha, amendoa, amaretto, limao, cafe, canela, hortela, pessego, laranja, baunilha, kirsch
+groselha: limao, hortela, gengibre, mel, framboesa, rosa, laranja, morango
+elderberry: limao, maca, canela, gengibre, flor-de-sabugueiro, mel, cravo, amora, laranja
+cereja-seca: chocolate, amendoa, canela, cafe, baunilha, laranja, amaretto, noz
+cranberry-seco: laranja, canela, noz, gengibre, maca, mel, cravo
+timur-berry: limao, gengibre, pimenta-sichuan, manga, coentro, hortela, maracuja, capim-limao
+frutas-vermelhas: limao, hortela, baunilha, laranja, rosa, mel, manjericao, morango, framboesa, pimenta-do-reino
+maca: tomilho, noz-moscada, caramelo, limao, canela, gengibre, baunilha, calvados, pera, flor-de-sabugueiro
+maca-verde: limao, gengibre, hortela, pepino, manjericao, mel, canela, tomilho
+pera: cardamomo, chocolate, gengibre, canela, baunilha, limao, flor-de-sabugueiro, tomilho, mel, anis-estrelado, queijo
+pessego: vinagre-balsamico, canela, limao, manjericao, hortela, baunilha, framboesa, gengibre, tomilho, flor-de-sabugueiro, amaretto
+pessego-branco: baunilha, limao, flor-de-sabugueiro, hortela, mel, gengibre, rosa, manjericao
+nectarina: limao, manjericao, baunilha, hortela, gengibre, mel, framboesa, tomilho, amaretto
+damasco: baunilha, amendoa, mel, limao, cardamomo, gengibre, laranja, amaretto, alecrim, canela
+damasco-seco: amendoa, canela, laranja, mel, baunilha, cardamomo, cha-preto, gengibre
+ameixa: canela, amendoa, baunilha, limao, anis-estrelado, mel, amaretto, laranja, cravo
+figo: mel, baunilha, laranja, amendoa, tomilho, balsamico, queijo, canela, anis, mel
+figo-seco: amendoa, canela, laranja, mel, baunilha, anis, noz, cha-preto
+tamara: laranja, cafe, chocolate, canela, amendoa, baunilha, cardamomo, noz, mel
+roma: laranja, hortela, gengibre, limao, rosa, cardamomo, canela, morango, pepino
+marmelo: canela, limao, maca, cravo, mel, gengibre, baunilha, pera
+caqui: limao, gengibre, canela, baunilha, hortela, mel, noz, laranja
+ruibarbo: morango, limao, gengibre, laranja, morango, baunilha, hortela, morango
+uva: limao, hortela, flor-de-sabugueiro, gengibre, alecrim, manjericao, tomilho, laranja
+passas: canela, laranja, noz, baunilha, rum, cafe, cravo, limao
+abacaxi: hortela, coco, gengibre, limao, lima, baunilha, pimenta, maracuja, hortela
+manga: lima, cardamomo, gengibre, coco, hortela, limao, maracuja, coentro, chile-jalapeno, iogurte
+manga-verde: lima, coentro, chile-jalapeno, hortela, gengibre, sal, pepino, coentro
+mamao: lima, gengibre, hortela, limao, maracuja, coco, laranja, mel
+mamao-verde: lima, coentro, chile-jalapeno, gengibre, hortela, shoyu, limao
+goiaba: lima, gengibre, hortela, morango, limao, baunilha, coco, canela
+lichia: rosa, jasmim, lima, gengibre, flor-de-sabugueiro, hortela, limao, pepino, cardamomo
+banana: chocolate, cafe, canela, coco, baunilha, rum, noz, caramelo, limao
+agua-de-coco: abacaxi, lima, hortela, gengibre, limao, maracuja, coco
+tamarindo: lima, gengibre, chile-jalapeno, laranja, mel, canela, limao, pimenta
+kiwi: lima, hortela, morango, gengibre, limao, maracuja, pepino, mel
+carambola: lima, gengibre, hortela, limao, chile-jalapeno, coentro, pepino
+melancia: lima, hortela, manjericao, pepino, limao, gengibre, morango, rosa, flor-de-sabugueiro
+melao-honeydew: lima, hortela, gengibre, pepino, limao, flor-de-sabugueiro, manjericao, melao-cantaloupe
+acai: banana, morango, limao, guarana, cacau, mel, hortela, coco
+cupuacu: maracuja, limao, banana, chocolate, baunilha, coco, laranja, gengibre
+pitaya: limao, hortela, coco, gengibre, morango, lima, maracuja, baunilha
+jabuticaba: limao, canela, cravo, laranja, gengibre, baunilha, hortela, cachaça
+caldo-de-cana: limao, gengibre, hortela, abacaxi, canela, lima, maracuja
+creme-de-coco: abacaxi, limao, baunilha, manga, maracuja, hortela, gengibre
+leite-de-coco: abacaxi, limao, manga, baunilha, cardamomo, cafe, hortela
+hortela: limao, lima, morango, pepino, chocolate, gengibre, abacaxi, maracuja, limao-siciliano
+hortela-pimenta: limao, chocolate, gengibre, morango, lima, laranja, pepino, cacau
+manjericao: morango, limao, pessego, tomate, abacaxi, lima, morango, laranja
+manjericao-tailandes: lima, coco, gengibre, chile-thai, manga, coentro, capim-limao, hortela
+manjericao-roxo: morango, limao, framboesa, laranja, tomate, vinagre-balsamico, mel
+alecrim: limao, laranja, toranja, mel, maca, tomilho, gengibre, pessego, pera
+tomilho: limao, limao-siciliano, mel, maca, pera, pessego, lavanda, gengibre, laranja, alecrim
+tomilho-limao: limao, mel, frango, pessego, gengibre, hortela, pera, lavanda
+coentro: lima, manga, chile-jalapeno, limao, pepino, abacaxi, gengibre, coco, tomate
+salsa: limao, lima, tomate, pepino, coentro, chile-jalapeno, laranja, abacaxi, hortela, gengibre
+endro: limao, pepino, limao-siciliano, funcho, gengibre, hortela, iogurte, batata, vodka
+estragao: limao, limao-siciliano, mostarda, funcho, pera, pessego, laranja, mel, baunilha
+salvia: limao, laranja, pera, maca, mel, manteiga, alecrim, pessego, baunilha
+oregano: limao, tomate, laranja, chile-jalapeno, alho, mel, limao-siciliano
+oregano-mexicano: lima, tomate, chile-jalapeno, limao, coentro, abacaxi, laranja
+manjerona: limao, tomate, laranja, pessego, mel, baunilha, hortela
+cebolinha: limao, gengibre, pepino, coentro, lima, shoyu, pepino
+shiso: pepino, limao, yuzu, gengibre, morango, pepino, gengibre, lima, umeboshi
+capim-limao: gengibre, lima, coco, chile-thai, coentro, hortela, limao, manga, pandan
+verbena-limao: limao, pessego, morango, mel, hortela, gengibre, framboesa, baunilha
+hissopo-de-anis: limao, mel, laranja, anis, funcho, pera, hortela
+louro: limao, laranja, baunilha, canela, tomilho, creme, pera
+erva-cidreira: limao, mel, hortela, gengibre, camomila, pessego, baunilha, limao-siciliano
+pandan: coco, baunilha, limao, manga, arroz, gengibre, leite-de-coco, abacaxi
+gengibre: limao, lima, mel, hortela, limao-siciliano, canela, pera, abacaxi, maracuja, laranja
+gengibre-cristalizado: limao, chocolate, laranja, canela, pera, mel, cafe, baunilha
+canela: maca, chocolate, laranja, pera, cafe, limao, cravo, baunilha, amendoa, melao
+canela-em-pau: maca, laranja, chocolate, cravo, mel, limao, baunilha, cafe
+cardamomo: cafe, chocolate, laranja, pera, limao, rosa, coco, baunilha, manga
+cardamomo-verde: cafe, laranja, pera, limao, rosa, manga, baunilha, chocolate
+cravo: laranja, canela, maca, mel, cafe, chocolate, limao, abacaxi, cravo
+noz-moscada: leite, maca, pera, baunilha, chocolate, canela, limao, creme, ovo
+allspice: laranja, limao, canela, cravo, gengibre, cafe, abacaxi, rum
+anis-estrelado: laranja, pera, limao, canela, cafe, figo, chocolate, funcho
+anis: laranja, limao, funcho, canela, figo, pera, cafe, erva-doce
+acafrao: laranja, limao, rosa, mel, cardamomo, baunilha, pessego, leite
+curcuma: laranja, gengibre, limao, coco, pimenta-do-reino, mel, leite, manga
+cominho: limao, laranja, coentro, chile-jalapeno, tomate, lima, hortela, iogurte
+coentro-semente: limao, laranja, coentro, cominho, gengibre, chile, lima
+funcho-semente: laranja, limao, pera, anis, hortela, funcho, mel, laranja
+pimenta-do-reino: morango, limao, chocolate, morango, abacaxi, pessego, melancia, tomate
+pimenta-branca: limao, pera, frango, creme, gengibre, limao-siciliano, funcho
+pimenta-sichuan: limao, gengibre, yuzu, laranja, mel, pessego, chocolate, manga
+pimenta-espelette: chocolate, morango, limao, laranja, tomate, pessego, mel
+paprica-defumada: limao, laranja, chocolate, tomate, mel, fumaca, canela
+pimenta-rosa: morango, limao, chocolate, laranja, baunilha, pessego, framboesa, mel
+junipero: limao, laranja, hortela, pepino, alecrim, cardamomo, toranja, limao-siciliano
+galanga: lima, capim-limao, coco, chile-thai, gengibre, coentro, limao
+chile-jalapeno: lima, limao, abacaxi, manga, chocolate, morango, pepino, coentro, abacaxi
+chile-serrano: lima, limao, manga, abacaxi, coentro, pepino, melancia, gengibre
+chile-thai: lima, capim-limao, coco, coentro, gengibre, manga, limao, hortela
+chile-habanero: manga, abacaxi, lima, laranja, maracuja, mel, cenoura, limao
+chile-chipotle: limao, laranja, chocolate, cafe, abacaxi, mel, fumaca, tomate
+chile-ancho: chocolate, cafe, laranja, canela, limao, cereja, baunilha
+chile-guajillo: laranja, limao, chocolate, tomate, canela, abacaxi, mel
+chile-poblano: milho, limao, queijo, coentro, creme, tomate, laranja
+flocos-de-chili: limao, laranja, chocolate, mel, manga, abacaxi, tomate
+wasabi: limao, pepino, gengibre, yuzu, shoyu, pepino, abacate
+raiz-forte: limao, tomate, maca, beterraba, mostarda, laranja, pepino
+mostarda: mel, limao, laranja, funcho, pessego, estragao, vinagre, mel
+cumaru: baunilha, cafe, chocolate, laranja, coco, amendoa, rum, limao
+curry: lima, coco, gengibre, manga, limao, coentro, abacaxi, leite-de-coco
+lavanda: limao, limao-siciliano, mel, morango, baunilha, framboesa, mirtilo, limao, pessego, cha-preto
+hibisco: limao, gengibre, laranja, morango, canela, rosa, hortela, maracuja, baunilha
+flor-de-hibisco: limao, gengibre, laranja, morango, rosa, canela, hortela
+flor-de-sabugueiro: limao, limao-siciliano, pepino, hortela, pera, framboesa, lichia, morango, maca, toranja, gengibre, lima, uva, jasmim, rosa, pessego, kiwi, melancia, manjericao, mel
+agua-de-rosas: cardamomo, limao, morango, framboesa, baunilha, pistache, mel, lichia, jasmim
+jasmim: limao, cha-verde, lichia, pera, pessego, mel, flor-de-sabugueiro, baunilha, manga
+flor-de-laranjeira: laranja, limao, mel, baunilha, amendoa, figo, cardamomo, cha-preto, pessego
+violeta: framboesa, limao, baunilha, chocolate, mirtilo, rosa, mel, amora
+rosa: limao, framboesa, morango, cardamomo, lichia, mel, baunilha, pistache, agua-de-rosas
+camomila: limao, limao-siciliano, mel, maca, lavanda, baunilha, pessego, pera, hortela
+polen-de-funcho: laranja, limao, mel, pera, anis, funcho, hortela
+cafe: limao, laranja, chocolate, baunilha, canela, cardamomo, amendoa, coco, laranja, pera
+espresso: chocolate, laranja, limao, baunilha, canela, cardamomo, amendoa, leite
+cafe-frio: leite, baunilha, chocolate, laranja, canela, cardamomo, limao, coco
+cacau: baunilha, laranja, canela, cafe, chile, baunilha, amendoa, leite
+cacau-nibs: laranja, cafe, baunilha, canela, chile, chocolate, mel
+chocolate: laranja, cafe, hortela, baunilha, morango, framboesa, limao, canela, pimenta-rosa, pera, banana, cereja
+chocolate-branco: morango, limao, baunilha, framboesa, laranja, hortela, coco, lavanda
+chocolate-amargo: laranja, cafe, cereja, pimenta, limao, canela, baunilha, framboesa
+matcha: limao, baunilha, leite, gengibre, morango, chocolate-branco, hortela, yuzu
+cha-preto: limao, limao-siciliano, bergamota, laranja, baunilha, canela, leite, cardamomo, pessego
+cha-verde: limao, gengibre, hortela, jasmim, pessego, limao-siciliano, mel, pepino
+cha-branco: pessego, mel, jasmim, limao, flor-de-sabugueiro, pera, baunilha, lichia
+mel: limao, limao-siciliano, gengibre, lavanda, tomilho, laranja, maca, pera, pessego, alecrim, baunilha, cardamomo
+mel-de-laranjeira: limao, laranja, gengibre, baunilha, tomilho, lavanda, pessego, flor-de-laranjeira
+maple: limao, laranja, canela, maca, baunilha, gengibre, cafe, noz, bourbon
+agave: limao, lima, laranja, gengibre, abacaxi, manga, chile, hortela
+melaco: limao, gengibre, laranja, canela, cafe, gengibre, rum, maca
+acucar-mascavo: limao, canela, gengibre, laranja, cafe, baunilha, maca, cravo
+acucar-de-coco: limao, coco, baunilha, gengibre, laranja, canela, cafe
+acucar-de-palma: limao, coco, gengibre, laranja, baunilha, canela, cafe
+melado-de-roma: limao, laranja, rosa, hortela, gengibre, canela, morango
+alcacuz: limao, laranja, anis, funcho, hortela, gengibre, canela
+nectar-de-coco: limao, abacaxi, baunilha, gengibre, hortela, maracuja, coco
+caramelo: limao, maca, cafe, baunilha, laranja, sal, chocolate, pera, canela
+macaron: limao, limao-siciliano, chocolate, morango, pistache, mel, cafe, violeta, pessego, cereja, leite-condensado, framboesa, rosa, lavanda, baunilha, amendoa
+amaretto: amendoa, cereja, laranja, cafe, chocolate, baunilha, pessego, damasco, figo, canela, pera, ameixa, mel, limao, limao-siciliano, macaron, pessego
+brigadeiro: chocolate, cafe, morango, limao, leite-condensado, baunilha, avela, canela
+amendoa: limao, cereja, baunilha, cafe, chocolate, pessego, damasco, laranja, mel, canela, amaretto
+avelã: chocolate, cafe, limao, baunilha, laranja, mel, cacau, avela
+avelã: chocolate, cafe, baunilha, laranja, mel, limao
+noz: cafe, chocolate, mel, laranja, canela, maca, pera, baunilha, figo
+peca: maple, baunilha, cafe, chocolate, laranja, canela, bourbon, maca
+pistache: rosa, limao, baunilha, chocolate, framboesa, cardamomo, mel, laranja, leite
+castanha-de-caju: baunilha, coco, limao, caramelo, cafe, chocolate, canela
+macadamia: baunilha, coco, cafe, chocolate, limao, caramelo, abacaxi
+gergelim: limao, mel, gengibre, baunilha, laranja, shoyu, mel, limao
+tahine: limao, mel, baunilha, cafe, chocolate, laranja, gengibre, canela
+leite-de-amendoa: baunilha, cafe, limao, canela, chocolate, cereja, mel, laranja
+pepino: limao, lima, hortela, gengibre, flor-de-sabugueiro, manjericao, endro, yuzu, morango
+tomate: limao, manjericao, coentro, hortela, laranja, pepino, pimenta-do-reino, morango, salsinha
+aipo: limao, gengibre, maca, pepino, tomate, endro, limao-siciliano
+sal-de-aipo: limao, tomate, gengibre, pepino, vodka, pimenta
+beterraba: limao, laranja, gengibre, hortela, chocolate, framboesa, queijo, anis
+funcho: limao, laranja, pera, hortela, anis, maçã, pepino, estragao, limao-siciliano
+abacate: limao, lima, coentro, tomate, chile, pepino, laranja, hortela
+azeitona: limao, laranja, tomilho, alecrim, funcho, vermute, gin
+alcaparra: limao, laranja, tomate, azeitona, salsa, endro
+cenoura: laranja, gengibre, limao, canela, mel, cominho, laranja, hortela
+milho: limao, manteiga, chile, lima, coentro, baunilha, mel
+abobora: canela, noz-moscada, laranja, limao, gengibre, baunilha, maple, cravo
+aspargo: limao, laranja, hortela, estragao, limao-siciliano, manteiga
+alcachofra: limao, laranja, hortela, azeite, alho, menta
+rabanete: limao, manteiga, sal, endro, pepino, hortela
+jicama: limao, lima, chile, coentro, laranja, pepino, hortela, manga
+tomate-seco: limao, manjericao, laranja, alecrim, queijo, pimenta
+agua-de-tomate: limao, aipo, pepino, coentro, pimenta, tabasco, horseradish
+suco-de-aipo: limao, gengibre, maca, pepino, hortela
+suco-de-beterraba: limao, laranja, gengibre, maca, hortela, framboesa
+vinagre-balsamico: morango, pessego, limao, figo, tomate, framboesa, laranja, mel
+vinagre-de-maca: limao, mel, gengibre, maca, hortela, canela
+vinagre-de-champagne: morango, pessego, limao, framboesa, pepino, flor-de-sabugueiro
+vinagre-de-arroz: limao, gengibre, pepino, shoyu, pepino, manga
+verjus: limao, pera, maca, uva, hortela, pessego
+umeboshi: shiso, limao, gengibre, pepino, shoyu, yuzu
+shoyu: limao, gengibre, laranja, gergelim, mel, wasabi, yuzu
+miso: limao, gengibre, laranja, sesamo, mel, baunilha, pera
+fumaca: limao, laranja, chocolate, maple, canela, whisky, pimenta
+sal-marinho: limao, chocolate, caramelo, melancia, tomate, pepino, toranja
+curacao-blue: laranja, limao, abacaxi, coco, maracuja, baunilha, hortela
+gum-nero: laranja, limao, cafe, chocolate, laranja, genziana
+falernum: limao, lima, gengibre, amendoa, cravo, canela, lima, hortela
+grenadine: limao, laranja, romã, hortela, gengibre, morango, tequila
+bubble-gum: morango, limao, baunilha, framboesa, tutti-frutti, laranja
+algodao-doce: morango, baunilha, limao, framboesa, tutti-frutti, leite
+tajin: lima, limao, manga, abacaxi, melancia, pepino, manga, laranja
+bitter-artesanal: laranja, limao, cafe, chocolate, canela, genciana, toranja
+fenugreek: maple, cafe, limao, cominho, curry, mel, laranja, gengibre, cardamomo, baunilha
+sumac: limao, tomate, hortela, pepino, laranja, gengibre, roma, coentro, manga
+avela: chocolate, cafe, baunilha, laranja, mel, limao, cacau, canela, avela
+`;
+
+  const PAIR_EXTRA = {};
+  PAIR_EXTRA_TEXT.split("\n").forEach((line) => {
+    const raw = line.trim();
+    if (!raw || raw.indexOf(":") < 0) return;
+    const id = raw.slice(0, raw.indexOf(":")).trim();
+    const parts = raw.slice(raw.indexOf(":") + 1).split(",").map((s) => s.trim()).filter(Boolean);
+    if (!PAIR_EXTRA[id]) PAIR_EXTRA[id] = [];
+    parts.forEach((pid) => {
+      if (!PAIR_EXTRA[id].includes(pid)) PAIR_EXTRA[id].push(pid);
+    });
+  });
+
+  function ingredientIdSet() {
+    return new Set(INGREDIENTS.map((i) => i.id));
+  }
+
+  function getRealPairings(id) {
+    const known = ingredientIdSet();
+    if (!id || !known.has(id)) return [];
+    const out = [];
+    const push = (pid) => {
+      if (!pid || pid === id || !known.has(pid) || out.includes(pid)) return;
+      out.push(pid);
+    };
+    const ing = INGREDIENTS.find((i) => i.id === id);
+    (ing && ing.affinities ? ing.affinities : []).forEach(push);
+    (ing && ing.exotic ? ing.exotic : []).forEach(push);
+    (PAIR_EXTRA[id] || []).forEach(push);
+    INGREDIENTS.forEach((other) => {
+      if (other.id === id) return;
+      const back = (other.affinities || []).includes(id) || (other.exotic || []).includes(id) || (PAIR_EXTRA[other.id] || []).includes(id);
+      if (back) push(other.id);
+    });
+    return out;
+  }
 
   const PROFILES = [
     { id: "doce", label: "Doce" },
@@ -411,7 +682,9 @@ window.CDData = (function () {
 
   /** Ingredientes líquidos derivados (para receitas) */
   const LIQUID_MAP = {
-    limao: { juice: "Suco de limão siciliano", syrup: null, garnish: "Zest de limão siciliano" },
+    limao: { juice: "Suco de limão tahiti", syrup: null, garnish: "Zest de limão tahiti" },
+    "limao-tahiti": { juice: "Suco de limão tahiti", syrup: null, garnish: "Zest de limão tahiti" },
+    "limao-siciliano": { juice: "Suco de limão siciliano", syrup: null, garnish: "Zest de limão siciliano" },
     lima: { juice: "Suco de lima", syrup: null, garnish: "Rodela de lima" },
     laranja: { juice: "Suco de laranja", syrup: null, garnish: "Zest de laranja" },
     grapefruit: { juice: "Suco de grapefruit", syrup: "Xarope de grapefruit", garnish: "Twist de grapefruit" },
@@ -448,9 +721,7 @@ window.CDData = (function () {
     cafe: { juice: "Espresso", syrup: "Xarope de café", garnish: "Grãos de café" },
     chocolate: { juice: null, syrup: "Xarope de chocolate", garnish: "Raspagem de chocolate" },
     lavanda: { juice: null, syrup: "Xarope de lavanda", garnish: "Flor de lavanda" },
-    elderflower: { juice: null, syrup: "Cordial de elderflower", garnish: "Flor / zest" },
-    "flor-de-sabugueiro": { juice: null, syrup: "Cordial de flor de sabugueiro", garnish: "Flor / zest" },
-    toranja: { juice: "Suco de toranja", syrup: "Xarope de toranja", garnish: "Twist de toranja" },
+    elderflower: { juice: null, syrup: "Cordial de flor de sabugueiro", garnish: "Flor de sabugueiro" },
     "flor-de-sabugueiro": { juice: null, syrup: "Cordial de flor de sabugueiro", garnish: "Flor de sabugueiro" },
     mel: { juice: null, syrup: "Mel diluído (1:1)", garnish: null },
     baunilha: { juice: null, syrup: "Xarope de baunilha", garnish: null },
@@ -587,6 +858,7 @@ window.CDData = (function () {
     getIngredient,
     getAffinities,
     getExoticSuggestions,
+    getRealPairings,
     getSpirit,
     spiritCategory,
     spiritRole,

@@ -65,7 +65,7 @@ Perfil (sem Refrescante):
 - **Cítrico** — acidulante perto de 30 ml e adoçante perto de 15 ml
 - **Equilibrado** — os dois no meio da faixa
 
-Xarope, purê, licor doce e o acidulante ficam entre **15 e 30 ml** quando entram. Famílias spirit-forward (ancestral, vermouth, milanese, duo, trio) não obrigam limão.
+Xarope, purê, licor doce e o acidulante ficam entre **15 e 30 ml** quando entram. Flor de sabugueiro (elderflower), macaron e amaretto ficam um pouco abaixo, em cerca de **10–15 ml**. O acidulante cítrico é só **limão tahiti** (mais agressivo) ou **limão siciliano** (mais suave). Famílias spirit-forward (ancestral, vermouth, milanese, duo, trio) não obrigam limão, e na ficha dá para tirar o limão mesmo quando ele entrou.
 - **Herbal / frutado / floral / picante** — a nota correspondente entra na ficha
 - **Amadeirado** — a base sugerida é envelhecida (whisky, conhaque, brandy e afins)
 
@@ -78,4 +78,4 @@ Força:
 
 Espuma: só entra na ficha quando a pessoa escolhe uma, ou pede “Deixa o app escolher”. “Sem espuma” (o padrão) deixa a receita sem cobertura. No montador dá para ligar ou tirar a espuma.
 
-O montador calcula a ficha a cada toque. Na ficha, **+** e **−** ajustam o ml da linha sem gerar outro drink, e **Exportar receita** copia o texto e baixa um `.txt`. Texto marcado **[BAR]** é inferência fora da regra escrita. Zero álcool ocupa o volume da base (~50 ml no equilibrado) com H2OH!, soda limonada, suco e/ou espumante sem álcool. Xarope, licor ou purê pedem limão, exceto nas famílias spirit-forward (ancestral, vermouth, milanese, duo, trio). As sugestões de sabor trazem 1 ou 2 pares exóticos com pairing real.
+O montador calcula a ficha a cada toque. Na ficha, **+** e **−** ajustam o ml da linha sem gerar outro drink. Dá para escolher **Travar proporção** (os outros ml acompanham) ou **Só avisar** (o equilíbrio sai do eixo e o app avisa, sem forçar). **Total de líquido** soma os ml abaixo dos ingredientes. A ficha não traz mais o tipo de gelo. **Exportar receita** copia o texto e baixa um `.txt`. Texto marcado **[BAR]** é inferência fora da regra escrita. Zero álcool ocupa o volume da base (~50 ml no equilibrado) com H2OH!, soda limonada, suco e/ou espumante sem álcool. Xarope, licor ou purê pedem limão tahiti ou siciliano, exceto nas famílias spirit-forward (ancestral, vermouth, milanese, duo, trio). Em Base, Sabores, Espuma e Copo, o **cardápio** acrescenta qualquer item além das sugestões. Sabores na ficha sobe até 20, e cada sugestão tem pairing real com o protagonista. As sugestões de sabor trazem 1 ou 2 pares exóticos quando o livro nomeia o par.
