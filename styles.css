@@ -618,6 +618,28 @@ h1.screen-title {
   font-size: 12px;
   color: var(--muted);
   margin-top: 8px;
+  line-height: 1.45;
+}
+
+.pool { margin-top: 18px; }
+.pool h2 {
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin-bottom: 4px;
+}
+.ficha-live .ficha-body { display: block; padding: 0 16px 16px; }
+.ficha-head.static { cursor: default; }
+.aviso {
+  margin-top: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(201, 162, 39, 0.08);
+  border: 1px solid var(--gold-dim);
+  color: var(--gold-soft);
+  font-size: 12px;
+  line-height: 1.4;
 }
 
 .footer-note {

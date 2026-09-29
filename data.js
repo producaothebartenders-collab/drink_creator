@@ -150,7 +150,14 @@ window.CDData = (function () {
     { id: "amadeirado", label: "Amadeirado" },
     { id: "floral", label: "Floral" },
     { id: "picante", label: "Picante" },
-    { id: "refrescante", label: "Refrescante" },
+  ];
+
+  /** Força — Refrescante saiu do perfil e entrou aqui. */
+  const FORCAS = [
+    { id: "suave", label: "Suave", hint: "Um pouco menos de álcool. Quando o app sugere a base, prefere teor mais baixo." },
+    { id: "equilibrado", label: "Equilibrado", hint: "Base alcoólica em torno de 50 ml." },
+    { id: "forte", label: "Forte", hint: "Um pouco mais de álcool." },
+    { id: "refrescante", label: "Refrescante", hint: "Entra refrigerante, suco, espumante ou outro alongador." },
   ];
 
   /** Tipos da casa (matriz-bebidas-tipos): rótulo sem marca e sem volume.
@@ -339,6 +346,8 @@ window.CDData = (function () {
     chocolate: { juice: null, syrup: "Xarope de chocolate", garnish: "Raspagem de chocolate" },
     lavanda: { juice: null, syrup: "Xarope de lavanda", garnish: "Flor de lavanda" },
     elderflower: { juice: null, syrup: "Cordial de elderflower", garnish: "Flor / zest" },
+    "flor-de-sabugueiro": { juice: null, syrup: "Cordial de flor de sabugueiro", garnish: "Flor / zest" },
+    toranja: { juice: "Suco de toranja", syrup: "Xarope de toranja", garnish: "Twist de toranja" },
     "flor-de-sabugueiro": { juice: null, syrup: "Cordial de flor de sabugueiro", garnish: "Flor de sabugueiro" },
     mel: { juice: null, syrup: "Mel diluído (1:1)", garnish: null },
     baunilha: { juice: null, syrup: "Xarope de baunilha", garnish: null },
@@ -384,11 +393,59 @@ window.CDData = (function () {
     return ing && ing.affinities ? ing.affinities.slice() : [];
   }
 
+  const FOAMS = [
+    { id: "gengibre", label: "ESPUMA GENGIBRE", tags: ["gengibre", "picante", "lima", "limao"] },
+    { id: "baunilha", label: "ESPUMA BAUNILHA", tags: ["baunilha", "doce", "chocolate", "cafe", "coco"] },
+    { id: "cupuacu", label: "ESPUMA CUPUAÇU", tags: ["cupuacu", "maracuja", "abacaxi", "tropical", "doce"] },
+    { id: "limao-siciliano", label: "ESPUMA LIMÃO SICILIANO", tags: ["limao", "limao-siciliano", "citrico"] },
+    { id: "canela", label: "ESPUMA CANELA", tags: ["canela", "amadeirado", "maca", "chocolate"] },
+    { id: "pistache", label: "ESPUMA PISTACHE", tags: ["pistache", "doce", "baunilha"] },
+    { id: "elderflower", label: "ESPUMA ELDERFLOWER (FLOR DE SABUGUEIRO)", tags: ["flor-de-sabugueiro", "floral", "pera", "limao"] },
+    { id: "amaretto", label: "ESPUMA AMARETTO", tags: ["amaretto", "amendoa", "doce"] },
+    { id: "amaretto-especiarias", label: "ESPUMA AMARETTO COM ESPECIARIAS", tags: ["amaretto", "canela", "cardamomo", "amadeirado"] },
+    { id: "melancia", label: "ESPUMA MELANCIA", tags: ["melancia", "frutado", "hortela"] },
+    { id: "morango", label: "ESPUMA MORANGO", tags: ["morango", "frutado", "baunilha"] },
+    { id: "maca-verde", label: "ESPUMA DE MAÇÃ VERDE", tags: ["maca", "maca-verde", "citrico"] },
+    { id: "amendoas", label: "ESPUMA DE AMÊNDOAS", tags: ["amendoa", "doce", "amaretto"] },
+    { id: "cereja", label: "ESPUMA DE CEREJA", tags: ["cereja", "frutado", "chocolate"] },
+    { id: "gengibre-lichia", label: "ESPUMA DE GENGIBRE COM LICHIA", tags: ["gengibre", "lichia", "picante", "floral"] },
+  ];
+
+  const LENGTHENERS = [
+    { id: "soda", label: "Soda", kind: "soft" },
+    { id: "tonica", label: "Tônica", kind: "soft" },
+    { id: "ginger-beer", label: "Ginger beer", kind: "soft" },
+    { id: "agua-gas", label: "Água com gás", kind: "soft" },
+    { id: "agua-coco", label: "Água de coco", kind: "juice" },
+    { id: "espumante-brut", label: "Espumante brut", kind: "sparkling" },
+    { id: "espumante-prosecco", label: "Espumante prosecco", kind: "sparkling" },
+    { id: "espumante-moscatel", label: "Espumante moscatel", kind: "sparkling" },
+    { id: "espumante-rose", label: "Espumante rosé", kind: "sparkling" },
+  ];
+
+  const LOW_ABV_CATEGORIES = ["espumante", "vinho", "soju", "saque", "vermouth", "aperitivo", "licor"];
+  const AGED_SPIRIT_IDS = [
+    "cachaca-ouro", "rum-ouro", "rum-envelhecido",
+    "whisky", "whisky-12", "whisky-18", "whisky-double", "bourbon",
+    "conhaque", "brandy", "tequila-ouro", "jerez",
+  ];
+
+  function isLowAbvCategory(category) {
+    return LOW_ABV_CATEGORIES.includes(category);
+  }
+
+  function isAgedSpiritId(id) {
+    return AGED_SPIRIT_IDS.includes(id);
+  }
+
   return {
     FLAVOR_NAMES,
     INGREDIENTS,
     SABOR_GROUPS,
     PROFILES,
+    FORCAS,
+    FOAMS,
+    LENGTHENERS,
     SPIRITS,
     SPIRIT_HEURISTICS,
     SPIRIT_CATEGORY_ORDER,
@@ -402,5 +459,7 @@ window.CDData = (function () {
     getSpirit,
     spiritCategory,
     spiritRole,
+    isLowAbvCategory,
+    isAgedSpiritId,
   };
 })();

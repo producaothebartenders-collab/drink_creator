@@ -1,6 +1,6 @@
 # Criador de Drinks
 
-App estático (HTML/CSS/JS) do **Grupo The Bartenders** para montar um drink em etapas: escolhas de álcool, sabores, perfil, força e copo passam pelo motor de regras e voltam **2–3 fichas** no padrão TB.
+App estático (HTML/CSS/JS) do **Grupo The Bartenders** para montar um drink em etapas: álcool, sabores, perfil, força e espuma. No fim, um **montador** oferece bases, sabores, espuma, copo e alongador — a ficha e as doses atualizam ao vivo.
 
 Visual **dark bar** (preto/carvão + dourado), pensado primeiro para celular. Interface em **português (Brasil)**.
 
@@ -16,8 +16,8 @@ Publicação pelo GitHub Pages a partir do branch `main`, pasta `/` (raiz). O ar
 |---------|--------|
 | `index.html` | Shell e telas do stepper |
 | `styles.css` | Visual dark bar |
-| `app.js` | Interface: stepper, chips, resultado e ajustes |
-| `motor.js` | Pipeline de sugestão |
+| `app.js` | Interface: stepper, chips e montador ao vivo |
+| `motor.js` | Regras de perfil, força, espuma e doses |
 | `data.js` | 220 sabores da lista mestre (nome, sem marca), afinidades só onde já havia heurística, tipos de bebida da casa, pairing, copos da MATRIZ e heurística de base |
 
 Os arquivos ficam na **raiz** do repositório. Caminhos de CSS e JS são relativos, então a página funciona tanto no Pages (`/drink_creator/`) quanto num servidor local.
@@ -50,17 +50,30 @@ Para parar o servidor: `Ctrl+C`.
 
 ---
 
-## Motor (pipeline)
+## Fluxo
 
-1. Validar a entrada (álcool, pelo menos 1 sabor, perfil 1–2, força, copo)
-2. Resolver a base (destilado, automático ou zero álcool)
-3. Expandir sabores em acorde e ponte
-4. Escolher a família estrutural (sour, long, mule, spirit-forward, build, spritz, gin-tonic, mocktail)
-5. Ajustar proporções pela força e pelo perfil
-6. Sugerir o copo pela MATRIZ (automático ou manual)
-7. Gerar 2–3 fichas TB (A match · B ponte/método · C base alternativa ou versão suave)
-8. Explicar a escolha e oferecer ajustes (mais doce, cítrico, força, trocar base, outra rodada)
+Início → Álcool/destilado → Sabores (1 a 3, entre os 220) → Perfil → Força → Espuma → Ficha ao vivo.
 
-**Caminhos especiais:** melão + Ramazzotti/amaro segue spritz, long drink ou spirit-forward com o amaro nomeado; zero álcool usa base de chá, shrub, tisana ou blend.
+O copo não é um passo: entra no montador, com até 5 opções da MATRIZ.
 
-As referências de treino (Flavor Bible, Liquid Intelligence, carta TB e MATRIZ de copos) estão parafraseadas no motor.
+## Motor
+
+Perfil (sem Refrescante):
+
+- **Doce** — mais adoçante (xarope, purê, licor) do que acidulante
+- **Amargo** — entra um bitter
+- **Cítrico** — mais acidulante do que adoçante
+- **Equilibrado** — doce e ácido na mesma medida
+- **Herbal / frutado / floral / picante** — a nota correspondente entra na ficha
+- **Amadeirado** — a base sugerida é envelhecida (whisky, conhaque, brandy e afins)
+
+Força:
+
+- **Suave** — um pouco menos de álcool; a sugestão prefere base de teor mais baixo
+- **Equilibrado** — base por volta de 50 ml
+- **Forte** — um pouco mais de álcool
+- **Refrescante** — entra refrigerante, suco, espumante ou outro alongador
+
+Espuma: uma da lista, nenhuma, ou “Deixa o app escolher”. No montador, até 5 espumas quando há espuma.
+
+O montador calcula a ficha a cada toque. Texto marcado **[BAR]** é inferência fora da regra escrita. Zero álcool usa base de chá, shrub, tisana ou blend. Os 220 sabores e os tipos de destilado da casa permanecem.

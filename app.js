@@ -1,14 +1,14 @@
 /* UI stepper — Criador de Drinks */
 (function () {
-  const STEPS = ["home", "alcool", "sabores", "perfil", "forca", "copo", "resultado"];
+  const STEPS = ["home", "alcool", "sabores", "perfil", "forca", "espumas", "resultado"];
   const STEP_LABELS = {
     home: "Início",
     alcool: "Álcool",
     sabores: "Sabores",
     perfil: "Perfil",
     forca: "Força",
-    copo: "Copo",
-    resultado: "Resultado",
+    espumas: "Espuma",
+    resultado: "Ficha",
   };
 
   const state = {
@@ -23,8 +23,9 @@
     sabores: [],
     perfil: [],
     forca: "equilibrado",
-    copo: "auto",
-    result: null,
+    espuma: "auto",
+    session: null,
+    picks: null,
   };
 
   const $ = (sel, el = document) => el.querySelector(sel);
@@ -49,8 +50,8 @@
         return state.perfil.length >= 1 && state.perfil.length <= 2;
       case "forca":
         return !!state.forca;
-      case "copo":
-        return !!state.copo;
+      case "espumas":
+        return true;
       default:
         return true;
     }
@@ -61,9 +62,8 @@
       state.destilado = null;
       state.destiladoAuto = true;
     }
-    if (state.step === "copo") {
-      runEngine();
-      go("resultado");
+    if (state.step === "espumas") {
+      enterResultado();
       return;
     }
     const i = stepIndex();
@@ -72,7 +72,7 @@
 
   function back() {
     if (state.step === "resultado") {
-      go("copo");
+      go("espumas");
       return;
     }
     const i = stepIndex();
@@ -86,45 +86,32 @@
       sabores: state.sabores.slice(),
       perfil: state.perfil.slice(),
       forca: state.forca,
-      copo: state.copo,
+      espuma: state.espuma,
     };
   }
 
-  function runEngine() {
+  function enterResultado() {
     try {
-      state.result = CDMotor.generate(engineInput());
+      state.session = CDMotor.prepareBuilder(engineInput());
+      state.picks = state.session.picks;
+      go("resultado");
     } catch (e) {
       console.error(e);
-      alert(e.message || "Erro ao gerar drinks.");
-      state.result = null;
+      alert(e.message || "Erro ao montar a ficha.");
     }
   }
 
-  function startCreate(zero) {
-    resetChoices();
-    if (zero) {
-      state.alcool = "sem";
-      go("sabores");
-    } else {
-      go("alcool");
-    }
+  function reassemble() {
+    const live = CDMotor.assemble(state.session.state, state.picks);
+    state.session.ficha = live.ficha;
+    state.session.explain = live.explain;
+    state.session.warnings = live.warnings;
+    paintLive();
   }
 
-  function surprise(zero) {
+  function startCreate() {
     resetChoices();
-    state.alcool = zero ? "sem" : "com";
-    state.result = CDMotor.surprise(!!zero);
-    // sync state from result for adjustments
-    Object.assign(state, {
-      alcool: state.result.state.alcool,
-      destilado: state.result.state.destilado,
-      destiladoAuto: !state.result.state.destilado,
-      sabores: state.result.state.sabores.slice(),
-      perfil: state.result.state.perfil.slice(),
-      forca: state.result.state.forca,
-      copo: state.result.state.copo || "auto",
-    });
-    go("resultado");
+    go("alcool");
   }
 
   function resetChoices() {
@@ -138,8 +125,9 @@
     state.sabores = [];
     state.perfil = [];
     state.forca = "equilibrado";
-    state.copo = "auto";
-    state.result = null;
+    state.espuma = "auto";
+    state.session = null;
+    state.picks = null;
   }
 
   function toggleSabor(id) {
@@ -156,35 +144,6 @@
     else if (state.perfil.length < 2) state.perfil.push(id);
     renderPerfil();
     updateNav();
-  }
-
-  function updateGlassPreview() {
-    const box = $("#glass-preview");
-    if (!box) return;
-    // provisional family guess
-    const fake = {
-      alcool: state.alcool || "com",
-      destilado: state.destiladoAuto ? null : state.destilado,
-      sabores: state.sabores.length ? state.sabores : ["limao"],
-      perfil: state.perfil.length ? state.perfil : ["equilibrado"],
-      forca: state.forca,
-      copo: "auto",
-    };
-    let glass;
-    try {
-      const r = CDMotor.generate(fake);
-      glass = r.glassSuggested;
-      if (state.copo !== "auto") {
-        glass = CDData.GLASSES.find((g) => g.id === state.copo) || glass;
-      }
-    } catch {
-      glass = CDData.GLASSES[0];
-    }
-    box.innerHTML = `
-      <div class="gs-name">${escapeHtml(glass.name)}</div>
-      <div class="gs-meta">${glass.ml} ml · capacidade nominal MATRIZ</div>
-      <div class="gs-why">${escapeHtml(glass.why)}</div>
-    `;
   }
 
   function escapeHtml(s) {
@@ -204,7 +163,7 @@
     const stepper = $("#stepper");
     const prog = $("#progress");
     const labels = $("#step-labels");
-    const flowSteps = STEPS.slice(1, 6); // alcool → copo
+    const flowSteps = STEPS.slice(1, 6);
     const showStepper = !["home", "resultado"].includes(state.step);
     if (stepper) stepper.style.display = showStepper ? "block" : "none";
     if (prog && showStepper) {
@@ -231,7 +190,7 @@
     const ind = $("#step-indicator");
     if (ind) {
       if (state.step === "home") ind.textContent = "TB · Proto";
-      else if (state.step === "resultado") ind.textContent = "Resultado";
+      else if (state.step === "resultado") ind.textContent = "Ficha";
       else {
         const n = flowSteps.indexOf(state.step) + 1;
         ind.textContent = `${n}/${flowSteps.length} · ${STEP_LABELS[state.step]}`;
@@ -242,7 +201,7 @@
     if (state.step === "sabores") renderSabores();
     if (state.step === "perfil") renderPerfil();
     if (state.step === "forca") renderForca();
-    if (state.step === "copo") renderCopo();
+    if (state.step === "espumas") renderEspumas();
     if (state.step === "resultado") renderResultado();
 
     updateNav();
@@ -258,7 +217,7 @@
     if (backBtn) backBtn.disabled = stepIndex() <= 0;
     if (nextBtn) {
       nextBtn.disabled = !canNext();
-      nextBtn.textContent = state.step === "copo" ? "Gerar drinks →" : "Continuar →";
+      nextBtn.textContent = state.step === "espumas" ? "Montar ficha →" : "Continuar →";
     }
   }
 
@@ -551,23 +510,30 @@
     grid.querySelectorAll("[data-p]").forEach((btn) => {
       btn.onclick = () => togglePerfil(btn.dataset.p);
     });
+    const notes = {
+      doce: "Mais adoçante (xarope, purê, licor) do que acidulante.",
+      amargo: "A ficha leva um bitter.",
+      citrico: "Mais acidulante do que adoçante.",
+      equilibrado: "Doce e ácido na mesma medida.",
+      herbal: "Entra uma nota herbal.",
+      frutado: "Entra fruta.",
+      amadeirado: "A base sugerida é envelhecida.",
+      floral: "Entra uma nota de flor.",
+      picante: "Entra pimenta, gengibre ou similar.",
+    };
+    const hint = $("#perfil-hint");
+    if (hint) {
+      hint.textContent = state.perfil.length
+        ? state.perfil.map((id) => notes[id]).filter(Boolean).join(" ")
+        : "Escolha 1 ou 2. A primeira manda se as duas puxarem o equilíbrio para lados opostos.";
+    }
   }
 
   function renderForca() {
     const grid = $("#forca-chips");
-    const opts = [
-      { id: "suave", label: "Suave", hint: "Base ~40 ml · mais diluição / long" },
-      { id: "equilibrado", label: "Equilibrado", hint: "Base ~50 ml · padrão TB" },
-      { id: "forte", label: "Forte", hint: "Base ~55–60 ml · menos diluição" },
-    ];
-    grid.innerHTML = opts
-      .map(
-        (o) => `
-      <button type="button" class="chip ${state.forca === o.id ? "on" : ""}" data-f="${o.id}" title="${o.hint}">
-        ${o.label}
-      </button>`
-      )
-      .join("");
+    grid.innerHTML = CDData.FORCAS.map(
+      (o) => `<button type="button" class="chip ${state.forca === o.id ? "on" : ""}" data-f="${o.id}">${escapeHtml(o.label)}</button>`
+    ).join("");
     grid.querySelectorAll("[data-f]").forEach((btn) => {
       btn.onclick = () => {
         state.forca = btn.dataset.f;
@@ -575,158 +541,229 @@
         updateNav();
       };
     });
-    $("#forca-hint").textContent = opts.find((o) => o.id === state.forca)?.hint || "";
+    const cur = CDData.FORCAS.find((o) => o.id === state.forca);
+    $("#forca-hint").textContent = cur ? cur.hint : "";
   }
 
-  function renderCopo() {
-    updateGlassPreview();
-    const grid = $("#copo-chips");
-    const opts = [{ id: "auto", name: "Automático (MATRIZ)" }, ...CDData.GLASSES];
+  function renderEspumas() {
+    const grid = $("#espuma-chips");
+    const opts = [
+      { id: "auto", label: "Deixa o app escolher", auto: true },
+      { id: "nenhuma", label: "Sem espuma", auto: true },
+    ].concat(CDData.FOAMS);
     grid.innerHTML = opts
-      .map((g) => {
-        const id = g.id;
-        const label = g.name || g.id;
-        const on = state.copo === id;
-        return `<button type="button" class="chip ${on ? "on" : ""} ${id === "auto" ? "auto-pick" : ""}" data-c="${id}">${escapeHtml(label)}${g.ml ? ` · ${g.ml} ml` : ""}</button>`;
+      .map((o) => {
+        const on = state.espuma === o.id;
+        const cls = o.auto ? "chip auto-pick" : "chip";
+        return `<button type="button" class="${cls} ${on ? "on" : ""}" data-e="${escapeHtml(o.id)}">${escapeHtml(o.label)}</button>`;
       })
       .join("");
-    grid.querySelectorAll("[data-c]").forEach((btn) => {
+    grid.querySelectorAll("[data-e]").forEach((btn) => {
       btn.onclick = () => {
-        state.copo = btn.dataset.c;
-        renderCopo();
+        state.espuma = btn.dataset.e;
+        renderEspumas();
         updateNav();
       };
     });
+    const hint = $("#espuma-hint");
+    if (!hint) return;
+    if (state.espuma === "nenhuma") {
+      hint.textContent = "A ficha sai sem espuma.";
+      return;
+    }
+    if (state.espuma === "auto") {
+      try {
+        const top = CDMotor.topFoam(engineInput());
+        hint.textContent = top
+          ? `Se deixar vazio, o app sugere ${top.label}, pelo sabor e pelo perfil.`
+          : "O app escolhe uma espuma que conversa com os sabores.";
+      } catch (e) {
+        hint.textContent = "O app escolhe uma espuma que conversa com os sabores.";
+      }
+      return;
+    }
+    const foam = CDData.FOAMS.find((f) => f.id === state.espuma);
+    hint.textContent = foam ? `${foam.label} entra na ficha. No montador dá para trocar.` : "";
+  }
+
+  function qtdText(ing) {
+    if (ing.qtd === "COMPLETAR" || ing.qtd === "COBERTURA" || ing.qtd === "toque") return String(ing.qtd);
+    return `${ing.qtd}${ing.unidade ? " " + ing.unidade : ""}`;
+  }
+
+  function liveHtml() {
+    const r = state.session;
+    if (!r || !r.ficha) return `<p class="screen-sub">Sem ficha.</p>`;
+    const f = r.ficha;
+    const ings = f.ingredientes
+      .map((ing) => `<li><span>${escapeHtml(ing.nome)}</span><span class="qtd">${escapeHtml(qtdText(ing))}</span></li>`)
+      .join("");
+    const tags = (f.paladar || []).map((t) => `<span>${escapeHtml(t)}</span>`).join("");
+    const warnings = (r.warnings || [])
+      .map((w) => `<p class="aviso">${escapeHtml(w)}</p>`)
+      .join("");
+    const why = (r.explain || [])
+      .map((e) => `<div class="why-item"><strong>${escapeHtml(e.title)}</strong><p>${escapeHtml(e.text)}</p></div>`)
+      .join("");
+    return `
+      <article class="ficha ficha-live open">
+        <div class="ficha-head static">
+          <span class="ficha-letter">TB</span>
+          <span class="ficha-title-block">
+            <div class="ficha-nome">${escapeHtml(f.nome)}</div>
+            <div class="ficha-cat">${escapeHtml(f.categoria)} · ${escapeHtml(f.metodo)}</div>
+            <div class="ficha-tags">${tags}</div>
+          </span>
+        </div>
+        <div class="ficha-body">
+          <ul class="ing-list">${ings}</ul>
+          <div class="ficha-field"><strong>Preparo</strong>${escapeHtml(f.preparo)}</div>
+          <div class="ficha-field"><strong>Copo / taça</strong>${escapeHtml(f.copo)} (${f.copoMl} ml)</div>
+          <div class="ficha-field"><strong>Guarnição</strong>${escapeHtml(f.guarnicao)}</div>
+          <div class="ficha-field"><strong>Gelo</strong>${escapeHtml(f.gelo)}</div>
+          ${f.canudo ? `<div class="ficha-field"><strong>Canudo</strong>${escapeHtml(f.canudo)}</div>` : ""}
+          ${warnings}
+        </div>
+      </article>
+      <div class="why-box">${why}</div>
+    `;
+  }
+
+  function paintLive() {
+    const box = $("#live-ficha");
+    if (box) box.innerHTML = liveHtml();
+  }
+
+  function chipRow(items, selected, attr, labelOf) {
+    return items
+      .map((item) => {
+        const id = item.id;
+        const on = Array.isArray(selected) ? selected.includes(id) : selected === id;
+        return `<button type="button" class="chip ${on ? "on" : ""}" ${attr}="${escapeHtml(id)}">${escapeHtml(labelOf(item))}</button>`;
+      })
+      .join("");
   }
 
   function renderResultado() {
     const root = $("#resultado-content");
-    if (!state.result) {
-      root.innerHTML = `<p class="screen-sub">Nenhum resultado. Volte e gere novamente.</p>`;
+    if (!state.session || !state.picks) {
+      root.innerHTML = `<p class="screen-sub">Nada para montar. Volte um passo.</p>`;
       return;
     }
-    const r = state.result;
-    const baseTag = r.base.suggested
-      ? r.base.type === "zero"
-        ? `Zero: ${r.base.label}`
-        : `Base sugerida: ${r.base.label}`
-      : `Base: ${r.base.label}`;
-
+    const pools = state.session.pools;
+    const baseTitle = state.alcool === "sem" ? "Base sem álcool" : "Base alcoólica";
+    const foamBlock = pools.foams.length
+      ? `<section class="pool">
+          <h2>Espuma</h2>
+          <p class="hint">Até 5. Toque para trocar. A cobertura entra no fim.</p>
+          <div class="chip-grid" id="pool-foams">
+            ${chipRow(pools.foams, state.picks.foamId, "data-foam", (f) => f.label)}
+            <button type="button" class="chip auto-pick ${state.picks.foamId ? "" : "on"}" data-foam="">Sem espuma</button>
+          </div>
+        </section>`
+      : "";
+    const lenItems = pools.lengtheners.slice();
     root.innerHTML = `
       <div class="result-header">
-        <h1 class="screen-title">Suas fichas</h1>
-        <p class="screen-sub">2–3 opções no padrão TB · toque para expandir</p>
-        <div class="result-meta">
-          <span class="tag gold">${escapeHtml(baseTag)}</span>
-          <span class="tag">Acorde: ${escapeHtml(r.flavors.chordLabels.join(" · "))}</span>
-          <span class="tag">Ponte: ${escapeHtml(r.flavors.bridgeLabel)}</span>
-          <span class="tag">Força: ${escapeHtml(r.state.forca)}</span>
-        </div>
+        <h1 class="screen-title">Monte a ficha</h1>
+        <p class="screen-sub">Escolha em cada grupo. A receita e as doses atualizam na hora.</p>
       </div>
-      <div id="fichas"></div>
-      <div class="why-box" id="why-box"></div>
-      <div class="section-label">Ajustar</div>
-      <div class="adjust-grid" id="adjust-grid"></div>
+      <div id="live-ficha">${liveHtml()}</div>
+      <section class="pool">
+        <h2>${baseTitle}</h2>
+        <p class="hint">Até 5 sugestões. Uma base por vez.</p>
+        <div class="chip-grid" id="pool-bases">
+          ${chipRow(pools.bases, state.picks.baseId, "data-base", (b) => b.label)}
+        </div>
+      </section>
+      <section class="pool">
+        <h2>Sabores na ficha</h2>
+        <p class="hint">Até 10. Marque o que entra. O perfil puxa o que não pode faltar.</p>
+        <div class="chip-grid" id="pool-flavors">
+          ${chipRow(pools.flavors, state.picks.flavorIds, "data-flavor", (f) => f.label)}
+        </div>
+      </section>
+      ${foamBlock}
+      <section class="pool">
+        <h2>Copo</h2>
+        <p class="hint">Até 5 da MATRIZ. O primeiro é o sugerido para o serviço.</p>
+        <div class="chip-grid" id="pool-glasses">
+          ${chipRow(pools.glasses, state.picks.glassId, "data-glass", (g) => `${g.name.replace(/Copo |Taça /g, "")}`)}
+        </div>
+      </section>
+      <section class="pool">
+        <h2>Alongador</h2>
+        <p class="hint">${state.forca === "refrescante" ? "Força refrescante: escolha refrigerante, suco ou espumante." : "Refrigerante, suco, espumante. Opcional fora da força refrescante."}</p>
+        <div class="chip-grid" id="pool-length">
+          ${chipRow(lenItems, state.picks.lengthenerId, "data-len", (l) => l.label)}
+          ${state.forca === "refrescante" ? "" : `<button type="button" class="chip auto-pick ${state.picks.lengthenerId ? "" : "on"}" data-len="">Sem alongador</button>`}
+        </div>
+      </section>
       <div class="btn-row" style="margin-top:16px">
-        <button type="button" class="btn btn-ghost" id="btn-nova">← Nova criação</button>
+        <button type="button" class="btn btn-ghost" id="btn-back-build">← Voltar</button>
+        <button type="button" class="btn btn-ghost" id="btn-nova">Nova criação</button>
       </div>
     `;
 
-    const fichasEl = $("#fichas");
-    fichasEl.innerHTML = r.fichas
-      .map((f, idx) => {
-        const ings = f.ingredientes
-          .map((ing) => {
-            const q =
-              ing.qtd === "COMPLETAR"
-                ? "COMPLETAR"
-                : `${ing.qtd}${ing.unidade ? " " + ing.unidade : ""}`;
-            return `<li><span>${escapeHtml(ing.nome)}</span><span class="qtd">${escapeHtml(q)}</span></li>`;
-          })
-          .join("");
-        const tags = f.paladar.map((t) => `<span>${escapeHtml(t)}</span>`).join("");
-        return `
-        <article class="ficha ${idx === 0 ? "open" : ""}" data-idx="${idx}">
-          <button type="button" class="ficha-head" aria-expanded="${idx === 0}">
-            <span class="ficha-letter">${escapeHtml(f.variant)}</span>
-            <span class="ficha-title-block">
-              <div class="ficha-nome">${escapeHtml(f.nome)}</div>
-              <div class="ficha-cat">${escapeHtml(f.categoria)} · ${escapeHtml(f.metodo)}</div>
-              <div class="ficha-tags">${tags}</div>
-            </span>
-            <span class="ficha-chevron">▾</span>
-          </button>
-          <div class="ficha-body">
-            <ul class="ing-list">${ings}</ul>
-            <div class="ficha-field"><strong>Preparo</strong>${escapeHtml(f.preparo)}</div>
-            <div class="ficha-field"><strong>Copo / taça</strong>${escapeHtml(f.copo)} (${f.copoMl} ml)<br><span style="color:var(--muted)">${escapeHtml(f.copoWhy)}</span></div>
-            <div class="ficha-field"><strong>Guarnição</strong>${escapeHtml(f.guarnicao)}</div>
-            <div class="ficha-field"><strong>Gelo</strong>${escapeHtml(f.gelo)}</div>
-            ${f.canudo ? `<div class="ficha-field"><strong>Canudo</strong>${escapeHtml(f.canudo)}</div>` : ""}
-            ${
-              f.mirror
-                ? `<div class="mirror-box"><strong>${escapeHtml(f.mirror.nome)}</strong><br>${escapeHtml(f.mirror.nota)}</div>`
-                : ""
-            }
-          </div>
-        </article>`;
-      })
-      .join("");
-
-    fichasEl.querySelectorAll(".ficha-head").forEach((btn) => {
+    $("#pool-bases").querySelectorAll("[data-base]").forEach((btn) => {
       btn.onclick = () => {
-        const art = btn.closest(".ficha");
-        const open = art.classList.toggle("open");
-        btn.setAttribute("aria-expanded", open);
+        state.picks.baseId = btn.dataset.base;
+        $("#pool-bases").querySelectorAll("[data-base]").forEach((b) => b.classList.toggle("on", b.dataset.base === state.picks.baseId));
+        reassemble();
       };
     });
-
-    $("#why-box").innerHTML =
-      `<h3>Por que</h3>` +
-      r.explain
-        .map(
-          (e) =>
-            `<div class="why-item"><strong>${escapeHtml(e.title)}</strong><p>${escapeHtml(e.text)}</p></div>`
-        )
-        .join("");
-
-    const actions = [
-      { id: "mais-doce", label: "Mais doce" },
-      { id: "mais-citrico", label: "Mais cítrico" },
-      { id: "mais-forte", label: "Mais forte" },
-      { id: "mais-suave", label: "Mais suave" },
-      { id: "trocar-base", label: "Trocar base" },
-      { id: "outra-rodada", label: "Outra rodada" },
-    ];
-    const ag = $("#adjust-grid");
-    ag.innerHTML = actions
-      .map((a) => `<button type="button" class="btn btn-soft btn-sm" data-adj="${a.id}">${a.label}</button>`)
-      .join("");
-    ag.querySelectorAll("[data-adj]").forEach((btn) => {
+    $("#pool-flavors").querySelectorAll("[data-flavor]").forEach((btn) => {
       btn.onclick = () => {
-        state.result = CDMotor.adjust(engineInput(), btn.dataset.adj);
-        Object.assign(state, {
-          alcool: state.result.state.alcool,
-          destilado: state.result.state.destilado,
-          destiladoAuto: !state.result.state.destilado,
-          sabores: state.result.state.sabores.slice(),
-          perfil: state.result.state.perfil.slice(),
-          forca: state.result.state.forca,
-          copo: state.result.state.copo || state.copo,
+        const id = btn.dataset.flavor;
+        const arr = state.picks.flavorIds;
+        const i = arr.indexOf(id);
+        if (i >= 0) {
+          if (arr.length === 1) return;
+          arr.splice(i, 1);
+        } else arr.push(id);
+        btn.classList.toggle("on", arr.includes(id));
+        reassemble();
+      };
+    });
+    const foamRoot = $("#pool-foams");
+    if (foamRoot) {
+      foamRoot.querySelectorAll("[data-foam]").forEach((btn) => {
+        btn.onclick = () => {
+          state.picks.foamId = btn.dataset.foam || null;
+          foamRoot.querySelectorAll("[data-foam]").forEach((b) => b.classList.toggle("on", (b.dataset.foam || null) === state.picks.foamId || (!b.dataset.foam && !state.picks.foamId)));
+          reassemble();
+        };
+      });
+    }
+    $("#pool-glasses").querySelectorAll("[data-glass]").forEach((btn) => {
+      btn.onclick = () => {
+        state.picks.glassId = btn.dataset.glass;
+        $("#pool-glasses").querySelectorAll("[data-glass]").forEach((b) => b.classList.toggle("on", b.dataset.glass === state.picks.glassId));
+        reassemble();
+      };
+    });
+    $("#pool-length").querySelectorAll("[data-len]").forEach((btn) => {
+      btn.onclick = () => {
+        const id = btn.dataset.len || null;
+        if (state.forca === "refrescante" && !id) return;
+        state.picks.lengthenerId = id;
+        $("#pool-length").querySelectorAll("[data-len]").forEach((b) => {
+          const bid = b.dataset.len || null;
+          b.classList.toggle("on", bid === state.picks.lengthenerId);
         });
-        renderResultado();
-        window.scrollTo({ top: 0, behavior: "smooth" });
+        reassemble();
       };
     });
-
+    $("#btn-back-build").onclick = () => back();
     $("#btn-nova").onclick = () => {
       resetChoices();
       go("home");
     };
+    window.scrollTo(0, 0);
   }
 
   function bindHome() {
-    $("#cta-criar").onclick = () => startCreate(false);
+    $("#cta-criar").onclick = () => startCreate();
     $("#btn-next").onclick = () => next();
     $("#btn-back").onclick = () => back();
   }
