@@ -18,7 +18,7 @@ Publicação pelo GitHub Pages a partir do branch `main`, pasta `/` (raiz). O ar
 | `styles.css` | Visual dark bar |
 | `app.js` | Interface: stepper, chips e montador ao vivo |
 | `motor.js` | Regras de perfil, força, espuma e doses |
-| `data.js` | 220 sabores da lista mestre (nome, sem marca), afinidades só onde já havia heurística, tipos de bebida da casa, pairing, copos da MATRIZ e heurística de base |
+| `data.js` | Sabores da lista mestre (nome, sem marca), afinidades e 1–2 pares exóticos, tipos de bebida da casa, pairing, copos da MATRIZ e heurística de base |
 
 Os arquivos ficam na **raiz** do repositório. Caminhos de CSS e JS são relativos, então a página funciona tanto no Pages (`/drink_creator/`) quanto num servidor local.
 
@@ -52,7 +52,7 @@ Para parar o servidor: `Ctrl+C`.
 
 ## Fluxo
 
-Início → Álcool/destilado → Sabores (1 a 3, entre os 220) → Perfil → Força → Espuma → Ficha ao vivo.
+Início → Álcool/destilado → Sabores (1 a 3) → Perfil → Força → Espuma → Ficha ao vivo.
 
 O copo não é um passo: entra no montador, com até 5 opções da MATRIZ.
 
@@ -65,7 +65,7 @@ Perfil (sem Refrescante):
 - **Cítrico** — acidulante perto de 30 ml e adoçante perto de 15 ml
 - **Equilibrado** — os dois no meio da faixa
 
-Xarope, purê, licor doce e o acidulante ficam entre **15 e 30 ml** quando entram. Todo drink leva algum acidulante nessa faixa.
+Xarope, purê, licor doce e o acidulante ficam entre **15 e 30 ml** quando entram. Famílias spirit-forward (ancestral, vermouth, milanese, duo, trio) não obrigam limão.
 - **Herbal / frutado / floral / picante** — a nota correspondente entra na ficha
 - **Amadeirado** — a base sugerida é envelhecida (whisky, conhaque, brandy e afins)
 
@@ -78,4 +78,4 @@ Força:
 
 Espuma: só entra na ficha quando a pessoa escolhe uma, ou pede “Deixa o app escolher”. “Sem espuma” (o padrão) deixa a receita sem cobertura. No montador dá para ligar ou tirar a espuma.
 
-O montador calcula a ficha a cada toque. Texto marcado **[BAR]** é inferência fora da regra escrita. Zero álcool usa base de chá, shrub, tisana ou blend. Os 220 sabores e os tipos de destilado da casa permanecem.
+O montador calcula a ficha a cada toque. Na ficha, **+** e **−** ajustam o ml da linha sem gerar outro drink, e **Exportar receita** copia o texto e baixa um `.txt`. Texto marcado **[BAR]** é inferência fora da regra escrita. Zero álcool ocupa o volume da base (~50 ml no equilibrado) com H2OH!, soda limonada, suco e/ou espumante sem álcool. Xarope, licor ou purê pedem limão, exceto nas famílias spirit-forward (ancestral, vermouth, milanese, duo, trio). As sugestões de sabor trazem 1 ou 2 pares exóticos com pairing real.

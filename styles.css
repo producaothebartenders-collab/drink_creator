@@ -544,17 +544,47 @@ h1.screen-title {
 .ing-list li {
   display: flex;
   justify-content: space-between;
+  align-items: center;
   gap: 12px;
   padding: 6px 0;
   border-bottom: 1px dotted var(--border);
   font-size: 13px;
 }
+.ing-list .ing-nome { flex: 1; min-width: 0; }
 .ing-list .qtd {
   color: var(--gold-soft);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
   font-weight: 600;
 }
+.ml-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.ml-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg-3);
+  color: var(--gold-soft);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+}
+.ml-btn:hover { border-color: var(--gold-dim); }
+.ml-btn:active { transform: scale(0.96); }
+.ficha-totais {
+  margin: 4px 0 14px;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  color: var(--gold-soft);
+}
+.comp-chip.exotic { color: var(--text); border-color: var(--gold-dim); }
+.exotic-tag { color: var(--gold) !important; }
 
 .ficha-field {
   margin-bottom: 10px;

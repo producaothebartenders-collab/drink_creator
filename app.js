@@ -103,10 +103,20 @@
 
   function reassemble() {
     const live = CDMotor.assemble(state.session.state, state.picks);
+    if (live.flavorIds && state.picks) state.picks.flavorIds = live.flavorIds.slice();
     state.session.ficha = live.ficha;
     state.session.explain = live.explain;
     state.session.warnings = live.warnings;
     paintLive();
+    syncFlavorChips();
+  }
+
+  function syncFlavorChips() {
+    const root = $("#pool-flavors");
+    if (!root || !state.picks) return;
+    root.querySelectorAll("[data-flavor]").forEach((btn) => {
+      btn.classList.toggle("on", state.picks.flavorIds.includes(btn.dataset.flavor));
+    });
   }
 
   function startCreate() {
@@ -430,7 +440,7 @@
       comp.innerHTML =
         `<h3>Complementos sugeridos</h3>` +
         (list.length
-          ? list.map((c) => `<span class="comp-chip">${escapeHtml(c.label)}<em>[${c.source}]</em></span>`).join("")
+          ? list.map((c) => `<span class="comp-chip${c.exotic ? " exotic" : ""}">${escapeHtml(c.label)}<em>[${c.source}]</em>${c.exotic ? `<em class="exotic-tag">exótico</em>` : ""}</span>`).join("")
           : `<p class="empty">Sem sugestão extra.</p>`) +
         (barOnly ? `<p class="hint">Sem pairing de livro — ponte leve de bar.</p>` : `<p class="hint">Até 3 sabores · o 1º é o protagonista.</p>`);
     }
@@ -447,7 +457,10 @@
     });
     let list = CDData.INGREDIENTS.filter((ing) => (cat === "todas" ? true : ing.group === cat));
     if (q) {
-      list = list.filter((ing) => fold(ing.label).includes(q) || fold(labels[ing.group] || "").includes(q));
+      list = list.filter((ing) => {
+        const blob = fold([ing.label, ...(ing.aliases || []), labels[ing.group] || ""].join(" "));
+        return blob.includes(q);
+      });
     }
 
     const count = $("#sabor-count");
@@ -596,8 +609,15 @@
     if (!r || !r.ficha) return `<p class="screen-sub">Sem ficha.</p>`;
     const f = r.ficha;
     const ings = f.ingredientes
-      .map((ing) => `<li><span>${escapeHtml(ing.nome)}</span><span class="qtd">${escapeHtml(qtdText(ing))}</span></li>`)
+      .map((ing, i) => {
+        const adjustable = ing.unidade === "ml" && typeof ing.qtd === "number";
+        const qtd = adjustable
+          ? `<span class="ml-controls"><button type="button" class="ml-btn" data-ml="-1" data-i="${i}" aria-label="Diminuir ${escapeHtml(ing.nome)}">−</button><span class="qtd">${escapeHtml(qtdText(ing))}</span><button type="button" class="ml-btn" data-ml="1" data-i="${i}" aria-label="Aumentar ${escapeHtml(ing.nome)}">+</button></span>`
+          : `<span class="qtd">${escapeHtml(qtdText(ing))}</span>`;
+        return `<li><span class="ing-nome">${escapeHtml(ing.nome)}</span>${qtd}</li>`;
+      })
       .join("");
+    const totais = `<p class="ficha-totais">Base ${f.baseMl} ml · acidulante ${f.acidSum} ml · adoçante ${f.sweetSum} ml</p>`;
     const tags = (f.paladar || []).map((t) => `<span>${escapeHtml(t)}</span>`).join("");
     const warnings = (r.warnings || [])
       .map((w) => `<p class="aviso">${escapeHtml(w)}</p>`)
@@ -617,11 +637,16 @@
         </div>
         <div class="ficha-body">
           <ul class="ing-list">${ings}</ul>
+          ${totais}
           <div class="ficha-field"><strong>Preparo</strong>${escapeHtml(f.preparo)}</div>
           <div class="ficha-field"><strong>Copo / taça</strong>${escapeHtml(f.copo)} (${f.copoMl} ml)</div>
           <div class="ficha-field"><strong>Guarnição</strong>${escapeHtml(f.guarnicao)}</div>
           <div class="ficha-field"><strong>Gelo</strong>${escapeHtml(f.gelo)}</div>
           ${f.canudo ? `<div class="ficha-field"><strong>Canudo</strong>${escapeHtml(f.canudo)}</div>` : ""}
+          <div class="btn-row" style="margin-top:12px">
+            <button type="button" class="btn btn-primary" id="btn-export">Exportar receita</button>
+          </div>
+          <p class="hint" id="export-status"></p>
           ${warnings}
         </div>
       </article>
@@ -629,9 +654,136 @@
     `;
   }
 
+  function recalcTotals() {
+    const r = state.session;
+    if (!r || !r.ficha) return;
+    const f = r.ficha;
+    let base = 0;
+    let acid = 0;
+    let sweet = 0;
+    f.ingredientes.forEach((ing) => {
+      if (ing.unidade !== "ml" || typeof ing.qtd !== "number") return;
+      if (ing.role === "base") base += ing.qtd;
+      else if (ing.role === "acido") acid += ing.qtd;
+      else if (ing.role === "doce" || ing.role === "fruta" || ing.role === "floral" || ing.role === "picante") sweet += ing.qtd;
+    });
+    if (f.licorIsSweet) sweet += base;
+    f.baseMl = base;
+    f.acidSum = acid;
+    f.sweetSum = sweet;
+    const exp = (r.explain || []).find((e) => e.title === "Proporção");
+    if (exp && exp.text) {
+      exp.text = exp.text.replace(
+        /^Adoçante \d+ ml · acidulante \d+ ml · base \d+ ml\./,
+        `Adoçante ${sweet} ml · acidulante ${acid} ml · base ${base} ml.`
+      );
+    }
+    const perfil = (r.state && r.state.perfil) || [];
+    const warnings = (r.warnings || []).filter((w) => !/^Perfil (doce|cítrico|equilibrado)/.test(w));
+    if (!f.estrutura) {
+      if (perfil.includes("doce") && !(sweet > acid)) {
+        warnings.push("Perfil doce pede mais adoçante (xarope, purê ou licor) do que acidulante.");
+      }
+      if (perfil.includes("citrico") && !(acid > sweet)) {
+        warnings.push("Perfil cítrico pede mais acidulante do que adoçante.");
+      }
+      if (perfil.includes("equilibrado") && (acid === 0 || sweet === 0 || Math.abs(acid - sweet) > 2)) {
+        warnings.push("Perfil equilibrado pede doce e ácido na mesma medida.");
+      }
+    }
+    r.warnings = warnings;
+  }
+
+  function fichaTexto(f) {
+    const lines = [f.nome, f.categoria + (f.metodo ? ` · ${f.metodo}` : "")];
+    if (f.paladar && f.paladar.length) lines.push(`Paladar: ${f.paladar.join(" · ")}`);
+    lines.push("", "Ingredientes");
+    (f.ingredientes || []).forEach((ing) => {
+      lines.push(`${ing.nome} — ${qtdText(ing)}`);
+    });
+    lines.push("", "Preparo", f.preparo || "", "", "Copo / taça", `${f.copo}${f.copoMl ? ` (${f.copoMl} ml)` : ""}`);
+    lines.push("", "Guarnição", f.guarnicao || "", "", "Gelo", f.gelo || "");
+    if (f.canudo) lines.push("", "Canudo", f.canudo);
+    lines.push("");
+    return lines.join("\n");
+  }
+
+  function downloadText(filename, text) {
+    const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  async function exportRecipe() {
+    const f = state.session && state.session.ficha;
+    const status = $("#export-status");
+    if (!f) return;
+    const text = fichaTexto(f);
+    const slug = String(f.nome || "receita")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "") || "receita";
+    let copied = false;
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(text);
+        copied = true;
+      }
+    } catch (e) {
+      copied = false;
+    }
+    if (!copied) {
+      const area = document.createElement("textarea");
+      area.value = text;
+      area.setAttribute("readonly", "");
+      area.style.position = "fixed";
+      area.style.left = "-9999px";
+      document.body.appendChild(area);
+      area.select();
+      try {
+        copied = document.execCommand("copy");
+      } catch (e) {
+        copied = false;
+      }
+      area.remove();
+    }
+    downloadText(`${slug}.txt`, text);
+    if (status) {
+      status.textContent = copied
+        ? "Receita copiada e arquivo .txt baixado."
+        : "Arquivo .txt baixado.";
+    }
+  }
+
+  function bindLiveControls() {
+    const box = $("#live-ficha");
+    if (!box) return;
+    box.querySelectorAll(".ml-btn").forEach((btn) => {
+      btn.onclick = () => {
+        const ing = state.session && state.session.ficha && state.session.ficha.ingredientes[Number(btn.dataset.i)];
+        const dir = Number(btn.dataset.ml);
+        if (!ing || ing.unidade !== "ml" || typeof ing.qtd !== "number" || !dir) return;
+        ing.qtd = Math.max(0, ing.qtd + dir * 5);
+        recalcTotals();
+        paintLive();
+      };
+    });
+    const exportBtn = $("#btn-export");
+    if (exportBtn) exportBtn.onclick = () => exportRecipe();
+  }
+
   function paintLive() {
     const box = $("#live-ficha");
     if (box) box.innerHTML = liveHtml();
+    bindLiveControls();
   }
 
   function chipRow(items, selected, attr, labelOf) {
@@ -678,9 +830,9 @@
       </section>
       <section class="pool">
         <h2>Sabores na ficha</h2>
-        <p class="hint">Até 10. Marque o que entra. O drink sempre leva um acidulante, entre 15 e 30 ml.</p>
+        <p class="hint">Até 10. Marque o que entra. Com xarope, purê ou licor o acidulante fica entre 15 e 30 ml, salvo nas famílias spirit-forward.</p>
         <div class="chip-grid" id="pool-flavors">
-          ${chipRow(pools.flavors, state.picks.flavorIds, "data-flavor", (f) => f.label)}
+          ${chipRow(pools.flavors, state.picks.flavorIds, "data-flavor", (f) => (f.exotic ? `${f.label} · exótico` : f.label))}
         </div>
       </section>
       ${foamBlock}
@@ -720,7 +872,8 @@
           if (arr.length === 1) return;
           const next = arr.filter((fid) => fid !== id);
           const losesAcid = CDMotor.roleOf(id) === "acido" && !next.some((fid) => CDMotor.roleOf(fid) === "acido");
-          if (losesAcid) return;
+          const acidOptional = !!(state.session && state.session.ficha && state.session.ficha.estrutura);
+          if (losesAcid && !acidOptional) return;
           arr.splice(i, 1);
         } else arr.push(id);
         btn.classList.toggle("on", arr.includes(id));
@@ -759,6 +912,7 @@
       });
     }
     $("#btn-back-build").onclick = () => back();
+    bindLiveControls();
     $("#btn-nova").onclick = () => {
       resetChoices();
       go("home");
