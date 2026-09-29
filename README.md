@@ -4,9 +4,9 @@ App estático (HTML/CSS/JS) do **Grupo The Bartenders** para montar um drink em 
 
 Visual **dark bar** (preto/carvão + dourado), pensado primeiro para celular. Interface em **português (Brasil)**.
 
-**Site publicado:** https://producaothebartenders-collab.github.io/drink_creator/
+**Endereço:** https://producaothebartenders-collab.github.io/drink_creator/
 
-O GitHub Pages serve este repositório a partir do branch `main`, pasta `/`.
+Publicação pelo GitHub Pages a partir do branch `main`, pasta `/` (raiz). O arquivo `.nojekyll` faz o Pages servir HTML, CSS e JS sem processamento do Jekyll.
 
 ---
 
