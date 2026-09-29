@@ -114,7 +114,7 @@
     paintLive();
     syncFlavorChips();
     syncOmitAcidChip();
-    ["bases", "flavors", "foams", "glasses"].forEach(syncCatalogOnStates);
+    ["bases", "flavors", "foams", "glasses", "lengtheners"].forEach(syncCatalogOnStates);
     catalogScroll.forEach(([el, top]) => {
       if (el.isConnected) el.scrollTop = top;
     });
@@ -641,7 +641,7 @@
     const lockOn = state.balanceMode === "lock";
     const balance = `<fieldset class="balance-mode">
           <legend>Ao ajustar os ml</legend>
-          <label><input type="radio" name="balance-mode" value="lock" ${lockOn ? "checked" : ""}> <span><strong>Travar proporção</strong> — os outros ml acompanham</span></label>
+          <label><input type="radio" name="balance-mode" value="lock" ${lockOn ? "checked" : ""}> <span><strong>Travar proporção</strong> — os adoçantes se compensam e o ácido acompanha o doce</span></label>
           <label><input type="radio" name="balance-mode" value="warn" ${lockOn ? "" : "checked"}> <span><strong>Só avisar</strong> — se o ácido se afastar do doce, avisa sem forçar</span></label>
         </fieldset>`;
     const tags = (f.paladar || []).map((t) => `<span>${escapeHtml(t)}</span>`).join("");
@@ -807,18 +807,10 @@
         const ing = state.session && state.session.ficha && state.session.ficha.ingredientes[Number(btn.dataset.i)];
         const dir = Number(btn.dataset.ml);
         if (!ing || ing.unidade !== "ml" || typeof ing.qtd !== "number" || !dir) return;
-        const prev = ing.qtd;
-        const next = Math.max(0, prev + dir * 5);
-        if (state.balanceMode === "lock" && prev > 0 && next !== prev) {
-          const ratio = next / prev;
-          state.session.ficha.ingredientes.forEach((other) => {
-            if (other === ing || other.unidade !== "ml" || typeof other.qtd !== "number" || other.qtd <= 0) return;
-            let scaled = Math.round((other.qtd * ratio) / 5) * 5;
-            if (scaled === other.qtd) scaled = other.qtd + (next > prev ? 5 : -5);
-            other.qtd = Math.max(5, scaled);
-          });
-        }
-        ing.qtd = next;
+        CDMotor.adjustLiveMl(state.session.ficha, Number(btn.dataset.i), dir, {
+          mode: state.balanceMode,
+          perfil: (state.session.state && state.session.state.perfil) || [],
+        });
         recalcTotals();
         paintLive();
       };
@@ -869,6 +861,7 @@
     }
     if (kind === "foams") return CDMotor.catalogFoams().map((f) => ({ id: f.id, label: f.label }));
     if (kind === "glasses") return CDMotor.catalogGlasses().map((g) => ({ id: g.id, label: g.name }));
+    if (kind === "lengtheners") return CDMotor.catalogLengtheners().map((l) => ({ id: l.id, label: l.label }));
     return [];
   }
 
@@ -878,6 +871,7 @@
     if (kind === "flavors") return state.picks.flavorIds.includes(id);
     if (kind === "foams") return state.picks.foamId === id;
     if (kind === "glasses") return state.picks.glassId === id;
+    if (kind === "lengtheners") return state.picks.lengthenerId === id;
     return false;
   }
 
@@ -908,6 +902,7 @@
     if (kind === "flavors") return $("#pool-flavors");
     if (kind === "foams") return $("#pool-foams");
     if (kind === "glasses") return $("#pool-glasses");
+    if (kind === "lengtheners") return $("#pool-length");
     return null;
   }
 
@@ -923,6 +918,7 @@
     if (kind === "flavors") return "data-flavor";
     if (kind === "foams") return "data-foam";
     if (kind === "glasses") return "data-glass";
+    if (kind === "lengtheners") return "data-len";
     return "data-id";
   }
 
@@ -945,6 +941,14 @@
       btn.onclick = () => {
         state.picks.glassId = btn.getAttribute("data-glass");
         syncPoolSelection("glasses");
+        reassemble();
+      };
+    } else if (kind === "lengtheners") {
+      btn.onclick = () => {
+        const id = btn.getAttribute("data-len");
+        if (!id) return;
+        state.picks.lengthenerId = id;
+        syncPoolSelection("lengtheners");
         reassemble();
       };
     }
@@ -986,6 +990,8 @@
       });
     } else if (kind === "glasses") {
       root.querySelectorAll("[data-glass]").forEach((b) => b.classList.toggle("on", b.getAttribute("data-glass") === state.picks.glassId));
+    } else if (kind === "lengtheners") {
+      root.querySelectorAll("[data-len]").forEach((b) => b.classList.toggle("on", b.getAttribute("data-len") === state.picks.lengthenerId));
     }
   }
 
@@ -1074,6 +1080,13 @@
       if (!pools.glasses.some((g) => g.id === id)) pools.glasses.push(item);
       state.picks.glassId = id;
       ensurePoolChip("glasses", item);
+    } else if (kind === "lengtheners") {
+      if (state.picks.lengthenerId === id) return;
+      const item = CDMotor.catalogLengtheners().find((l) => l.id === id);
+      if (!item) return;
+      if (!pools.lengtheners.some((l) => l.id === id)) pools.lengtheners.push(item);
+      state.picks.lengthenerId = id;
+      ensurePoolChip("lengtheners", item);
     } else return;
     syncPoolSelection(kind);
     reassemble();
@@ -1108,7 +1121,7 @@
   }
 
   function uniqueCustomId(kind, label) {
-    const prefix = { bases: "base", flavors: "flavor", foams: "foam", glasses: "glass" }[kind] || "item";
+    const prefix = { bases: "base", flavors: "flavor", foams: "foam", glasses: "glass", lengtheners: "lengthener" }[kind] || "item";
     const base = `custom-${prefix}-${slugPart(label)}`;
     const customs = (state.picks && state.picks.customs) || {};
     const pools = state.session.pools;
@@ -1142,6 +1155,7 @@
       return { id, label, group: "outros", role: "doce", exotic: false, kind: "custom", custom: true };
     }
     if (kind === "foams") return { id, label, custom: true };
+    if (kind === "lengtheners") return { id, label, kind: "soft", custom: true };
     return { id, name: label, label, ml: 300, why: "Copo livre informado na ficha.", custom: true };
   }
 
@@ -1153,6 +1167,7 @@
       if (CDMotor.isLemonAcid(id)) state.picks.omitAcid = false;
     } else if (kind === "foams") state.picks.foamId = id;
     else if (kind === "glasses") state.picks.glassId = id;
+    else if (kind === "lengtheners") state.picks.lengthenerId = id;
     syncPoolSelection(kind);
     reassemble();
   }
@@ -1177,7 +1192,7 @@
     if (!state.picks.customs) state.picks.customs = {};
     state.picks.customs[id] = {
       id,
-      kind: kind === "flavors" ? "flavor" : kind === "bases" ? "base" : kind === "foams" ? "foam" : "glass",
+      kind: kind === "flavors" ? "flavor" : kind === "bases" ? "base" : kind === "foams" ? "foam" : kind === "lengtheners" ? "lengthener" : "glass",
       label,
       ml: kind === "glasses" ? 300 : undefined,
     };
@@ -1283,10 +1298,12 @@
       </section>
       ${state.forca === "refrescante" ? `<section class="pool">
         <h2>Alongador</h2>
-        <p class="hint">Força refrescante: a ficha leva refrigerante, suco, espumante ou soda.</p>
+        <p class="hint">Força refrescante: a ficha completa com refrigerante, suco, chá, espumante ou outro alongador.</p>
         <div class="chip-grid" id="pool-length">
           ${chipRow(lenItems, state.picks.lengthenerId, "data-len", (l) => l.label)}
         </div>
+        ${customAddHtml("lengtheners", "Digite outro alongador")}
+        ${catalogHtml("lengtheners")}
       </section>` : ""}
       <div class="btn-row" style="margin-top:16px">
         <button type="button" class="btn btn-ghost" id="btn-back-build">← Voltar</button>
@@ -1302,19 +1319,7 @@
     if (foamRoot) foamRoot.querySelectorAll("[data-foam]").forEach((btn) => bindPoolChip("foams", btn));
     $("#pool-glasses").querySelectorAll("[data-glass]").forEach((btn) => bindPoolChip("glasses", btn));
     const lenRoot = $("#pool-length");
-    if (lenRoot) {
-      lenRoot.querySelectorAll("[data-len]").forEach((btn) => {
-        btn.onclick = () => {
-          const id = btn.dataset.len || null;
-          if (!id) return;
-          state.picks.lengthenerId = id;
-          lenRoot.querySelectorAll("[data-len]").forEach((b) => {
-            b.classList.toggle("on", b.dataset.len === state.picks.lengthenerId);
-          });
-          reassemble();
-        };
-      });
-    }
+    if (lenRoot) lenRoot.querySelectorAll("[data-len]").forEach((btn) => bindPoolChip("lengtheners", btn));
     $("#btn-back-build").onclick = () => back();
     bindLiveControls();
     bindCatalogs();

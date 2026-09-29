@@ -774,6 +774,14 @@ window.CDMotor = (function () {
     return pool.slice(0, 5).map((g) => ({ id: g.id, name: g.name, ml: g.ml, why: g.why }));
   }
 
+  function normName(s) {
+    return String(s || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .trim();
+  }
+
   function suggestLengtheners(state) {
     const scores = {};
     D().LENGTHENERS.forEach((l) => {
@@ -781,12 +789,53 @@ window.CDMotor = (function () {
     });
     const perfil = state.perfil || [];
     const sabores = state.sabores || [];
-    if (sabores.some((id) => isPicanteId(id)) || perfil.includes("picante")) scores["ginger-beer"] += 4;
-    if (perfil.includes("herbal") || perfil.includes("floral") || spiritCategory(state.destilado) === "gin") scores.tonica += 3;
-    if (perfil.includes("amargo")) scores["espumante-brut"] += 4;
-    if (sabores.some((id) => groupOf(id) === "tropical" || id === "coco")) scores["agua-coco"] += 3;
-    if (state.forca === "refrescante") scores.soda += 2;
-    if (perfil.includes("frutado")) scores.soda += 1;
+    if (sabores.some((id) => isPicanteId(id)) || perfil.includes("picante")) {
+      scores["ginger-beer"] += 4;
+      scores["ginger-ale"] += 2;
+    }
+    if (perfil.includes("herbal") || perfil.includes("floral") || spiritCategory(state.destilado) === "gin") {
+      scores.tonica += 3;
+      scores["tonica-zero"] += 2;
+      scores["cha-mate"] += 2;
+      scores["cha-hibisco"] += 1;
+    }
+    if (perfil.includes("amargo")) {
+      scores["espumante-brut"] += 4;
+      scores["espumante-sem-alcool"] += 2;
+      scores["vinho-branco"] += 1;
+    }
+    if (sabores.some((id) => groupOf(id) === "tropical" || id === "coco")) {
+      scores["agua-coco"] += 3;
+      scores["suco-abacaxi"] += 2;
+      scores["suco-maracuja"] += 2;
+      scores["suco-goiaba"] += 1;
+    }
+    if (state.forca === "refrescante") {
+      scores.soda += 2;
+      scores["soda-limonada"] += 1;
+    }
+    if (perfil.includes("frutado")) {
+      scores.soda += 1;
+      scores["suco-laranja"] += 2;
+      scores["suco-abacaxi"] += 1;
+      scores.sprite += 1;
+    }
+    if (perfil.includes("citrico")) {
+      scores["soda-limonada"] += 3;
+      scores.sprite += 2;
+      scores["suco-laranja"] += 2;
+    }
+    if (state.alcool === "sem") {
+      scores.h2oh += 3;
+      scores["tonica-zero"] += 2;
+      scores["coca-zero"] += 1;
+      scores["espumante-sem-alcool"] += 3;
+      scores["soda-limonada"] += 2;
+    }
+    if (sabores.some((id) => id === "laranja" || id === "tangerina")) scores["cha-tangerina"] += 2;
+    if (sabores.some((id) => id === "maca")) scores["suco-maca"] += 3;
+    if (sabores.some((id) => id === "cranberry")) scores["suco-cranberry"] += 3;
+    if (perfil.includes("floral")) scores["cha-branco"] += 2;
 
     const juices = [];
     sabores.forEach((id) => {
@@ -805,7 +854,11 @@ window.CDMotor = (function () {
       .sort((a, b) => b.sc - a.sc);
     const out = [];
     const push = (item) => {
-      if (item && !out.some((x) => x.id === item.id) && out.length < 5) out.push(item);
+      if (!item || out.length >= 5) return;
+      if (out.some((x) => x.id === item.id)) return;
+      const label = normName(item.label);
+      if (label && out.some((x) => normName(x.label) === label)) return;
+      out.push(item);
     };
     if (juices[0]) push(juices[0]);
     ranked.forEach(push);
@@ -814,6 +867,10 @@ window.CDMotor = (function () {
 
   function getLengthener(id, state) {
     if (!id) return null;
+    const custom = customRecord(id);
+    if (custom && custom.kind === "lengthener") {
+      return { id: custom.id, label: custom.label, kind: "soft" };
+    }
     const known = D().LENGTHENERS.find((l) => l.id === id);
     if (known) return known;
     if (String(id).indexOf("juice:") === 0) {
@@ -832,14 +889,15 @@ window.CDMotor = (function () {
   function applyLengthenerFamily(family, state, base, flavors, lengthener) {
     if (!lengthener) return { family, shifted: false };
     const cat = base.category;
-    if (lengthener.id === "tonica" && (cat === "gin" || cat === "steinhager")) {
+    if ((lengthener.id === "tonica" || lengthener.id === "tonica-zero") && (cat === "gin" || cat === "steinhager")) {
       return { family: "gin-tonic", shifted: family !== "gin-tonic" };
     }
-    if (lengthener.id === "ginger-beer") {
+    if (lengthener.id === "ginger-beer" || lengthener.id === "ginger-ale") {
       const spicy = (flavors.chord || []).some((id) => id === "gengibre" || isPicanteId(id)) || (state.perfil || []).includes("picante");
-      if (spicy || state.forca === "refrescante") return { family: "mule", shifted: family !== "mule" };
+      const mule = lengthener.id === "ginger-beer" ? (spicy || state.forca === "refrescante") : spicy;
+      if (mule) return { family: "mule", shifted: family !== "mule" };
     }
-    if (lengthener.kind === "sparkling" && ((state.perfil || []).includes("amargo") || (flavors.chord || []).some((id) => roleOf(id) === "amargo"))) {
+    if ((lengthener.kind === "sparkling" || lengthener.kind === "wine") && ((state.perfil || []).includes("amargo") || (flavors.chord || []).some((id) => roleOf(id) === "amargo"))) {
       return { family: "spritz", shifted: family !== "spritz" };
     }
     const short = ["sour", "daisy", "spirit-forward", "build", "mocktail-up", "spirit-up", "rocks"].includes(family);
@@ -1542,6 +1600,9 @@ window.CDMotor = (function () {
       licorIsSweet: base.category === "licor",
       liquidoMl: sumLiquidMl(items),
       omitAcid,
+      anchorBase: (items.find(isDistilledLine) || {}).qtd || 0,
+      anchorNonBase: sumLiquidMl(items) - ((items.find(isDistilledLine) || {}).qtd || 0),
+      spiritBump: 0,
     };
 
     return { ficha, explain, warnings, family, base, flavorIds };
@@ -1579,6 +1640,247 @@ window.CDMotor = (function () {
     return D().GLASSES.map((g) => ({ id: g.id, name: g.name, ml: g.ml, why: g.why }));
   }
 
+  function catalogLengtheners() {
+    return D().LENGTHENERS.map((l) => ({ id: l.id, label: l.label, kind: l.kind }));
+  }
+
+  const ML_STEP = 5;
+  const ML_FLOOR = 5;
+  /** Volume extra (fora do destilado) a partir do qual a base sobe. */
+  const SPIRIT_GROWTH_ML = 30;
+
+  function snapMl(n) {
+    return Math.round(Number(n) / ML_STEP) * ML_STEP;
+  }
+
+  function mlLines(ficha) {
+    return (ficha.ingredientes || []).filter((ing) => ing && ing.unidade === "ml" && typeof ing.qtd === "number");
+  }
+
+  function isAdocanteRole(role) {
+    return role === "doce" || role === "fruta" || role === "floral" || role === "picante";
+  }
+
+  function sweetenerLines(ficha) {
+    return mlLines(ficha).filter((ing) => isAdocanteRole(ing.role));
+  }
+
+  function acidLines(ficha) {
+    return mlLines(ficha).filter((ing) => ing.role === "acido");
+  }
+
+  function baseLines(ficha) {
+    return mlLines(ficha).filter((ing) => ing.role === "base");
+  }
+
+  function sumQty(lines) {
+    return lines.reduce((sum, ing) => sum + ing.qtd, 0);
+  }
+
+  function isDistilledLine(ing) {
+    if (!ing || ing.role !== "base" || ing.unidade !== "ml" || typeof ing.qtd !== "number") return false;
+    if (String(ing.id || "").indexOf("custom-") === 0) return true;
+    const sp = D().getSpirit(ing.id);
+    if (!sp || sp.role !== "base") return false;
+    if (D().isLowAbvCategory(sp.category)) return false;
+    return true;
+  }
+
+  function distilledLine(ficha) {
+    return baseLines(ficha).find(isDistilledLine) || null;
+  }
+
+  function displayedSweet(ficha) {
+    const extra = ficha.licorIsSweet ? sumQty(baseLines(ficha)) : 0;
+    return sumQty(sweetenerLines(ficha)) + extra;
+  }
+
+  function displayedAcid(ficha) {
+    return sumQty(acidLines(ficha));
+  }
+
+  function ensureVolumeAnchor(ficha) {
+    if (ficha.anchorNonBase != null) return;
+    const distilled = distilledLine(ficha);
+    const distilledMl = distilled ? distilled.qtd : 0;
+    ficha.anchorBase = distilledMl;
+    ficha.anchorNonBase = sumLiquidMl(ficha.ingredientes) - distilledMl;
+    if (ficha.spiritBump == null) ficha.spiritBump = 0;
+  }
+
+  function setLineTotal(lines, target) {
+    const active = lines.filter((ing) => ing.qtd > 0);
+    if (!active.length) return;
+    let goal = snapMl(target);
+    if (goal < ML_FLOOR) goal = ML_FLOOR;
+    const current = sumQty(active);
+    if (current <= 0) return;
+    active.forEach((ing) => {
+      let q = snapMl(ing.qtd * (goal / current));
+      if (q < ML_FLOOR) q = ML_FLOOR;
+      ing.qtd = q;
+    });
+    let guard = 24;
+    while (guard-- > 0) {
+      const sum = sumQty(active);
+      const drift = sum - goal;
+      if (Math.abs(drift) < ML_STEP) return;
+      if (drift > 0) {
+        const movable = active.filter((ing) => ing.qtd > ML_FLOOR).sort((a, b) => b.qtd - a.qtd);
+        if (!movable.length) return;
+        movable[0].qtd -= ML_STEP;
+      } else {
+        active.slice().sort((a, b) => b.qtd - a.qtd)[0].qtd += ML_STEP;
+      }
+    }
+  }
+
+  /**
+   * O ml que entrou no adoçante editado sai dos outros adoçantes, na proporção de cada um.
+   * Piso de 5 ml. Linha que já estava em 0 não entra.
+   */
+  function tradeoffSweeteners(ficha, edited, delta) {
+    const siblings = sweetenerLines(ficha).filter((ing) => ing !== edited && ing.qtd > 0);
+    if (!siblings.length || !delta) return;
+    const weight = sumQty(siblings);
+    if (weight <= 0) return;
+    siblings.forEach((ing) => {
+      let q = snapMl(ing.qtd - delta * (ing.qtd / weight));
+      if (q < ML_FLOOR) q = ML_FLOOR;
+      ing.qtd = q;
+    });
+    const target = weight - delta;
+    let guard = 24;
+    while (guard-- > 0) {
+      const sum = sumQty(siblings);
+      const drift = sum - target;
+      if (Math.abs(drift) < ML_STEP) return;
+      if (drift > 0) {
+        const movable = siblings.filter((ing) => ing.qtd > ML_FLOOR).sort((a, b) => b.qtd - a.qtd);
+        if (!movable.length) return;
+        movable[0].qtd -= ML_STEP;
+      } else {
+        siblings.slice().sort((a, b) => b.qtd - a.qtd)[0].qtd += ML_STEP;
+      }
+    }
+  }
+
+  function nudgeToward(lines, target) {
+    const active = lines.filter((ing) => ing.qtd > 0);
+    if (!active.length) return;
+    const current = sumQty(active);
+    const goal = snapMl(target);
+    const diff = goal - current;
+    if (Math.abs(diff) < ML_STEP) return;
+    const step = Math.max(-10, Math.min(10, diff));
+    const snapped = snapMl(current + step);
+    if (snapped === current) return;
+    setLineTotal(lines, Math.max(ML_FLOOR, snapped));
+  }
+
+  function balanceTag(perfil) {
+    return (perfil || []).find((p) => p === "doce" || p === "citrico" || p === "equilibrado") || null;
+  }
+
+  /** Se o ácido fugiu do doce, mexe no ácido ou nos adoçantes — nunca no destilado. */
+  function defendSweetAcid(ficha, perfil, edited) {
+    const mode = balanceTag(perfil);
+    const sweet = displayedSweet(ficha);
+    const acid = displayedAcid(ficha);
+    if (sweet <= 0 || acid <= 0) return;
+    const editedAcid = !!(edited && edited.role === "acido");
+    const far = 10;
+
+    if (mode === "doce") {
+      if (acid >= sweet + far) {
+        if (editedAcid) nudgeToward(sweetenerLines(ficha), acid + far);
+        else nudgeToward(acidLines(ficha), Math.max(ML_FLOOR, sweet - far));
+      }
+      return;
+    }
+    if (mode === "citrico") {
+      if (sweet >= acid + far) {
+        if (editedAcid) nudgeToward(sweetenerLines(ficha), Math.max(ML_FLOOR, acid - far));
+        else nudgeToward(acidLines(ficha), sweet + far);
+      }
+      return;
+    }
+    if (Math.abs(acid - sweet) > far) {
+      if (editedAcid) nudgeToward(sweetenerLines(ficha), acid);
+      else nudgeToward(acidLines(ficha), sweet);
+    }
+  }
+
+  function keepSweetAcidRatio(ficha, sweetBefore, acidBefore, moveAcid) {
+    if (sweetBefore <= 0 || acidBefore <= 0) return;
+    if (moveAcid) {
+      const sweetNow = displayedSweet(ficha);
+      if (sweetNow <= 0 || sweetNow === sweetBefore) return;
+      setLineTotal(acidLines(ficha), acidBefore * (sweetNow / sweetBefore));
+      return;
+    }
+    const acidNow = displayedAcid(ficha);
+    if (acidNow <= 0 || acidNow === acidBefore) return;
+    const targetSweet = sweetBefore * (acidNow / acidBefore);
+    const baseSweet = ficha.licorIsSweet ? sumQty(baseLines(ficha)) : 0;
+    if (!sweetenerLines(ficha).some((ing) => ing.qtd > 0)) return;
+    setLineTotal(sweetenerLines(ficha), Math.max(ML_FLOOR, targetSweet - baseSweet));
+  }
+
+  function maybeRaiseSpirit(ficha) {
+    const distilled = distilledLine(ficha);
+    if (!distilled) return;
+    const nonSpirit = sumLiquidMl(ficha.ingredientes) - distilled.qtd;
+    const growth = nonSpirit - (ficha.anchorNonBase || 0);
+    if (growth < SPIRIT_GROWTH_ML) return;
+    const deserved = snapMl((growth - 20) / 2);
+    if (deserved < ML_STEP) return;
+    const already = ficha.spiritBump || 0;
+    const add = deserved - already;
+    if (add < ML_STEP) return;
+    distilled.qtd += add;
+    ficha.spiritBump = deserved;
+  }
+
+  /**
+   * +/- da ficha ao vivo.
+   * lock: um adoçante sobe, os outros adoçantes descem; o ácido acompanha o doce;
+   * o destilado só sobe se o restante do líquido cresceu bastante.
+   * warn: só a linha editada muda.
+   */
+  function adjustLiveMl(ficha, index, direction, options) {
+    if (!ficha || !ficha.ingredientes) return ficha;
+    const ing = ficha.ingredientes[index];
+    const dir = Number(direction);
+    if (!ing || ing.unidade !== "ml" || typeof ing.qtd !== "number" || !dir) return ficha;
+    const prev = ing.qtd;
+    const next = Math.max(0, prev + (dir > 0 ? ML_STEP : -ML_STEP));
+    if (next === prev) return ficha;
+    const mode = options && options.mode === "lock" ? "lock" : "warn";
+    if (mode !== "lock") {
+      ing.qtd = next;
+      return ficha;
+    }
+    ensureVolumeAnchor(ficha);
+    const sweetBefore = displayedSweet(ficha);
+    const acidBefore = displayedAcid(ficha);
+    const sweetEdit = isAdocanteRole(ing.role);
+    const acidEdit = ing.role === "acido";
+    const baseEdit = ing.role === "base";
+    ing.qtd = next;
+    if (sweetEdit) {
+      tradeoffSweeteners(ficha, ing, next - prev);
+      keepSweetAcidRatio(ficha, sweetBefore, acidBefore, true);
+    } else if (acidEdit) {
+      keepSweetAcidRatio(ficha, sweetBefore, acidBefore, false);
+    } else if (baseEdit && ficha.licorIsSweet) {
+      keepSweetAcidRatio(ficha, sweetBefore, acidBefore, true);
+    }
+    defendSweetAcid(ficha, options && options.perfil, ing);
+    if (!baseEdit) maybeRaiseSpirit(ficha);
+    return ficha;
+  }
+
   return {
     validate,
     suggestSpirit,
@@ -1600,5 +1902,7 @@ window.CDMotor = (function () {
     catalogFlavors,
     catalogFoams,
     catalogGlasses,
+    catalogLengtheners,
+    adjustLiveMl,
   };
 })();
