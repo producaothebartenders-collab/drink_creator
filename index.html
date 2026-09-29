@@ -43,7 +43,14 @@
       <div class="chip-grid" id="alcool-chips"></div>
       <div id="spirit-section" style="display:none">
         <div class="section-label">Destilado</div>
-        <div class="chip-grid" id="spirit-chips"></div>
+        <p class="hint spirit-hint" id="spirit-hint"></p>
+        <div class="chip-grid" id="spirit-auto"></div>
+        <div class="spirit-tools">
+          <label class="sr-only" for="spirit-search">Buscar tipo</label>
+          <input type="search" id="spirit-search" placeholder="Buscar tipo (ex.: jambu, bitter, limoncello)" autocomplete="off" enterkeyhint="search" />
+          <div class="cat-scroll" id="spirit-cats" role="tablist" aria-label="Famílias"></div>
+        </div>
+        <div id="spirit-groups"></div>
       </div>
     </section>
 

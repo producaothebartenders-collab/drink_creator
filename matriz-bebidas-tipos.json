@@ -1,0 +1,410 @@
+[
+  {
+    "id": "cachaca-prata",
+    "label": "Cachaça prata",
+    "category": "cachaca",
+    "role": "base"
+  },
+  {
+    "id": "cachaca-ouro",
+    "label": "Cachaça ouro",
+    "category": "cachaca",
+    "role": "base"
+  },
+  {
+    "id": "cachaca",
+    "label": "Cachaça",
+    "category": "cachaca",
+    "role": "base"
+  },
+  {
+    "id": "cachaca-jambu",
+    "label": "Cachaça de jambu",
+    "category": "cachaca",
+    "role": "base"
+  },
+  {
+    "id": "vodka",
+    "label": "Vodka",
+    "category": "vodka",
+    "role": "base"
+  },
+  {
+    "id": "vodka-cucumber-mint",
+    "label": "Vodka cucumber & mint",
+    "category": "vodka",
+    "role": "base"
+  },
+  {
+    "id": "vodka-pear",
+    "label": "Vodka pear",
+    "category": "vodka",
+    "role": "base"
+  },
+  {
+    "id": "vodka-vanilla",
+    "label": "Vodka vanilla",
+    "category": "vodka",
+    "role": "base"
+  },
+  {
+    "id": "vodka-coco",
+    "label": "Vodka de coco",
+    "category": "vodka",
+    "role": "base"
+  },
+  {
+    "id": "rum-branco",
+    "label": "Rum branco",
+    "category": "rum",
+    "role": "base"
+  },
+  {
+    "id": "rum-ouro",
+    "label": "Rum ouro",
+    "category": "rum",
+    "role": "base"
+  },
+  {
+    "id": "rum-envelhecido",
+    "label": "Rum envelhecido",
+    "category": "rum",
+    "role": "base"
+  },
+  {
+    "id": "rum-especiado",
+    "label": "Rum especiado",
+    "category": "rum",
+    "role": "base"
+  },
+  {
+    "id": "rum-coco",
+    "label": "Rum de coco",
+    "category": "rum",
+    "role": "base"
+  },
+  {
+    "id": "steinhager",
+    "label": "Steinhäger",
+    "category": "steinhager",
+    "role": "base"
+  },
+  {
+    "id": "gin",
+    "label": "Gin",
+    "category": "gin",
+    "role": "base"
+  },
+  {
+    "id": "gin-frutado",
+    "label": "Gin frutado",
+    "category": "gin",
+    "role": "base"
+  },
+  {
+    "id": "whisky",
+    "label": "Whisky",
+    "category": "whiskey",
+    "role": "base"
+  },
+  {
+    "id": "whisky-12",
+    "label": "Whisky 12 anos",
+    "category": "whiskey",
+    "role": "base"
+  },
+  {
+    "id": "whisky-18",
+    "label": "Whisky 18 anos",
+    "category": "whiskey",
+    "role": "base"
+  },
+  {
+    "id": "whisky-double",
+    "label": "Whisky double",
+    "category": "whiskey",
+    "role": "base"
+  },
+  {
+    "id": "bourbon",
+    "label": "Bourbon",
+    "category": "whiskey",
+    "role": "base"
+  },
+  {
+    "id": "whiskey-fire",
+    "label": "Whiskey fire",
+    "category": "whiskey",
+    "role": "base"
+  },
+  {
+    "id": "espumante-brut",
+    "label": "Espumante brut",
+    "category": "espumante",
+    "role": "base"
+  },
+  {
+    "id": "espumante-prosecco",
+    "label": "Espumante prosecco",
+    "category": "espumante",
+    "role": "base"
+  },
+  {
+    "id": "espumante-moscatel",
+    "label": "Espumante moscatel",
+    "category": "espumante",
+    "role": "base"
+  },
+  {
+    "id": "espumante-rose",
+    "label": "Espumante rosé",
+    "category": "espumante",
+    "role": "base"
+  },
+  {
+    "id": "vermouth-rosso",
+    "label": "Vermouth rosso",
+    "category": "vermouth",
+    "role": "modificador"
+  },
+  {
+    "id": "vermouth-bianco",
+    "label": "Vermouth bianco",
+    "category": "vermouth",
+    "role": "modificador"
+  },
+  {
+    "id": "vermouth-rosato",
+    "label": "Vermouth rosato",
+    "category": "vermouth",
+    "role": "modificador"
+  },
+  {
+    "id": "vermouth-dry",
+    "label": "Vermouth dry",
+    "category": "vermouth",
+    "role": "modificador"
+  },
+  {
+    "id": "bitter-italiano",
+    "label": "Bitter italiano",
+    "category": "bitter",
+    "role": "modificador"
+  },
+  {
+    "id": "bitter-angostura",
+    "label": "Bitter angostura",
+    "category": "bitter",
+    "role": "modificador"
+  },
+  {
+    "id": "bitter-cacau",
+    "label": "Bitter de cacau",
+    "category": "bitter",
+    "role": "modificador"
+  },
+  {
+    "id": "bitter-artesanal",
+    "label": "Bitter artesanal",
+    "category": "bitter",
+    "role": "modificador"
+  },
+  {
+    "id": "bitter-herbal",
+    "label": "Bitter herbal",
+    "category": "bitter",
+    "role": "modificador"
+  },
+  {
+    "id": "bitter-alcachofra",
+    "label": "Bitter de alcachofra",
+    "category": "bitter",
+    "role": "modificador"
+  },
+  {
+    "id": "fernet",
+    "label": "Fernet",
+    "category": "bitter",
+    "role": "modificador"
+  },
+  {
+    "id": "bitter-digestivo",
+    "label": "Bitter digestivo",
+    "category": "bitter",
+    "role": "modificador"
+  },
+  {
+    "id": "aperitivo-laranja",
+    "label": "Aperitivo laranja",
+    "category": "aperitivo",
+    "role": "modificador"
+  },
+  {
+    "id": "aperitivo-vinho",
+    "label": "Aperitivo de vinho",
+    "category": "aperitivo",
+    "role": "modificador"
+  },
+  {
+    "id": "saque",
+    "label": "Saquê",
+    "category": "saque",
+    "role": "base"
+  },
+  {
+    "id": "soju",
+    "label": "Soju",
+    "category": "soju",
+    "role": "base"
+  },
+  {
+    "id": "vinho-branco",
+    "label": "Vinho branco",
+    "category": "vinho",
+    "role": "base"
+  },
+  {
+    "id": "vinho-tinto",
+    "label": "Vinho tinto",
+    "category": "vinho",
+    "role": "base"
+  },
+  {
+    "id": "vinho-rose",
+    "label": "Vinho rosé",
+    "category": "vinho",
+    "role": "base"
+  },
+  {
+    "id": "jerez",
+    "label": "Vinho de jerez",
+    "category": "vinho",
+    "role": "base"
+  },
+  {
+    "id": "conhaque",
+    "label": "Conhaque",
+    "category": "conhaque",
+    "role": "base"
+  },
+  {
+    "id": "brandy",
+    "label": "Brandy",
+    "category": "brandy",
+    "role": "base"
+  },
+  {
+    "id": "tequila-prata",
+    "label": "Tequila prata",
+    "category": "tequila",
+    "role": "base"
+  },
+  {
+    "id": "tequila-ouro",
+    "label": "Tequila ouro",
+    "category": "tequila",
+    "role": "base"
+  },
+  {
+    "id": "brize",
+    "label": "Brizê",
+    "category": "brize",
+    "role": "base"
+  },
+  {
+    "id": "pisco",
+    "label": "Pisco",
+    "category": "pisco",
+    "role": "base"
+  },
+  {
+    "id": "licor-pessego",
+    "label": "Licor de pêssego",
+    "category": "licor",
+    "role": "modificador"
+  },
+  {
+    "id": "licor-framboesa",
+    "label": "Licor de framboesa",
+    "category": "licor",
+    "role": "modificador"
+  },
+  {
+    "id": "licor-curacao-blue",
+    "label": "Licor curaçao blue",
+    "category": "licor",
+    "role": "modificador"
+  },
+  {
+    "id": "licor-curacao",
+    "label": "Licor curaçao",
+    "category": "licor",
+    "role": "modificador"
+  },
+  {
+    "id": "licor-cafe",
+    "label": "Licor de café",
+    "category": "licor",
+    "role": "modificador"
+  },
+  {
+    "id": "triple-sec",
+    "label": "Triple sec",
+    "category": "licor",
+    "role": "modificador"
+  },
+  {
+    "id": "licor-baunilha-citrico",
+    "label": "Licor baunilha cítrico",
+    "category": "licor",
+    "role": "modificador"
+  },
+  {
+    "id": "licor-cream",
+    "label": "Licor cream",
+    "category": "licor",
+    "role": "modificador"
+  },
+  {
+    "id": "licor-avela",
+    "label": "Licor de avelã",
+    "category": "licor",
+    "role": "modificador"
+  },
+  {
+    "id": "licor-whisky-mel",
+    "label": "Licor de whisky e mel",
+    "category": "licor",
+    "role": "modificador"
+  },
+  {
+    "id": "licor-elderflower",
+    "label": "Licor de elderflower",
+    "category": "licor",
+    "role": "modificador"
+  },
+  {
+    "id": "licor-canela",
+    "label": "Licor de canela",
+    "category": "licor",
+    "role": "modificador"
+  },
+  {
+    "id": "limoncello",
+    "label": "Limoncello",
+    "category": "licor",
+    "role": "modificador"
+  },
+  {
+    "id": "licor-chocolate",
+    "label": "Licor de chocolate",
+    "category": "licor",
+    "role": "modificador"
+  },
+  {
+    "id": "amaretto",
+    "label": "Amaretto",
+    "category": "licor",
+    "role": "modificador"
+  }
+]

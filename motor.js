@@ -6,6 +6,61 @@ window.CDMotor = (function () {
     return JSON.parse(JSON.stringify(o));
   }
 
+  function spiritCategory(id) {
+    if (!id) return null;
+    return D().spiritCategory ? D().spiritCategory(id) : id;
+  }
+
+  function spiritRole(id) {
+    if (!id) return "base";
+    return D().spiritRole ? D().spiritRole(id) : "base";
+  }
+
+  function spiritLabel(id) {
+    if (!id) return "";
+    const labels = D().SPIRIT_LABELS || {};
+    if (labels[id]) return labels[id];
+    const rec = D().getSpirit ? D().getSpirit(id) : null;
+    return rec ? rec.label : id;
+  }
+
+  /** Nome curto da família (auto / card C). Tipo específico usa o rótulo da casa. */
+  const NAME_BITS = {
+    vodka: "VODKA",
+    gin: "GIN",
+    rum: "RUM",
+    whiskey: "WHISKEY",
+    cachaca: "CANA",
+    tequila: "AGAVE",
+    espumante: "ESPUMANTE",
+    pisco: "PISCO",
+    saque: "SAQUÊ",
+    soju: "SOJU",
+    conhaque: "CONHAQUE",
+    brandy: "BRANDY",
+    vinho: "VINHO",
+    steinhager: "STEINHÄGER",
+    brize: "BRIZÊ",
+    vermouth: "VERMOUTH",
+    licor: "LICOR",
+    bitter: "BITTER",
+    aperitivo: "APERITIVO",
+  };
+
+  function nameBit(id, category) {
+    const cat = category || spiritCategory(id);
+    if (id && cat && id !== cat) {
+      const label = spiritLabel(id);
+      if (label && label !== id) return label.toUpperCase();
+    }
+    return NAME_BITS[cat] || NAME_BITS[id] || (spiritLabel(id) || "TB").toUpperCase();
+  }
+
+  const BASE_CYCLE = [
+    "vodka", "gin", "rum", "whiskey", "cachaca", "tequila",
+    "espumante", "pisco", "saque", "soju", "conhaque", "brandy", "vinho", "steinhager", "brize",
+  ];
+
   /** §2.1 Validar */
   function validate(state) {
     const s = clone(state);
@@ -26,12 +81,16 @@ window.CDMotor = (function () {
       return { type: "zero", id: zero.id, label: zero.label, suggested: true, alt: null };
     }
     if (state.destilado) {
+      const id = state.destilado;
+      const category = spiritCategory(id);
       return {
         type: "spirit",
-        id: state.destilado,
-        label: D().SPIRIT_LABELS[state.destilado] || state.destilado,
+        id,
+        category,
+        role: spiritRole(id),
+        label: spiritLabel(id),
         suggested: false,
-        alt: suggestSpirit(state, state.destilado),
+        alt: suggestSpirit(state, category),
       };
     }
     const primary = suggestSpirit(state, null);
@@ -39,31 +98,47 @@ window.CDMotor = (function () {
     return {
       type: "spirit",
       id: primary,
-      label: D().SPIRIT_LABELS[primary],
+      category: primary,
+      role: "base",
+      label: spiritLabel(primary),
       suggested: true,
       alt,
     };
   }
 
   function suggestSpirit(state, exclude) {
-    const scores = { vodka: 0, gin: 0, rum: 0, whiskey: 0, cachaca: 0, tequila: 0 };
+    const scores = {
+      vodka: 0, gin: 0, rum: 0, whiskey: 0, cachaca: 0, tequila: 0,
+      espumante: 0, pisco: 0, saque: 0, soju: 0, conhaque: 0, brandy: 0, vinho: 0, steinhager: 0,
+    };
     const tags = [...(state.sabores || []), ...(state.perfil || [])];
     D().SPIRIT_HEURISTICS.forEach((h) => {
+      const w = h.weight == null ? 1 : h.weight;
       h.tags.forEach((t) => {
         if (tags.includes(t)) {
           h.spirits.forEach((sp) => {
-            scores[sp] += t === state.sabores[0] ? 3 : 1;
+            scores[sp] = (scores[sp] || 0) + (t === state.sabores[0] ? 3 : 1) * w;
           });
         }
       });
     });
-    // perfil boosts
+    // perfil boosts — famílias novas só com +1, para não atropelar os clássicos
     (state.perfil || []).forEach((p) => {
       if (p === "herbal" || p === "floral") scores.gin += 2;
       if (p === "amadeirado" || p === "amargo") scores.whiskey += 2;
       if (p === "picante") scores.tequila += 2;
       if (p === "frutado" || p === "equilibrado") scores.vodka += 1;
       if (p === "refrescante") scores.gin += 1;
+      if (p === "floral" || p === "refrescante") scores.espumante += 1;
+      if (p === "citrico") scores.pisco += 1;
+      if (p === "floral") scores.saque += 1;
+      if (p === "frutado" || p === "refrescante") scores.soju += 1;
+      if (p === "amadeirado") {
+        scores.conhaque += 1;
+        scores.brandy += 1;
+      }
+      if (p === "frutado" || p === "floral") scores.vinho += 1;
+      if (p === "herbal") scores.steinhager += 1;
     });
     if ((state.sabores || []).includes("melao")) {
       scores.vodka += 2;
@@ -73,7 +148,7 @@ window.CDMotor = (function () {
       scores.whiskey += 2;
       scores.gin += 1;
     }
-    if (exclude) scores[exclude] = -99;
+    if (exclude) scores[spiritCategory(exclude) || exclude] = -99;
     let best = "gin";
     let bestScore = -1;
     Object.keys(scores).forEach((k) => {
@@ -206,27 +281,48 @@ window.CDMotor = (function () {
     const leadIng = D().getIngredient(lead);
     const bitter = isBitterLead(flavors, state);
     const fruitLead = ["berry", "tropical", "citrico", "fruta", "stone", "pome"].includes(leadIng?.group);
+    const cat = base.category || spiritCategory(base.id);
+    const role = base.role || spiritRole(base.id);
+    const ginLike = cat === "gin" || cat === "steinhager";
+    const whiskeyLike = cat === "whiskey" || cat === "conhaque" || cat === "brandy";
 
     if (state.alcool === "sem") {
       if (bitter && (p.includes("refrescante") || p.includes("amargo"))) return "mocktail-long";
       if (p.includes("refrescante") || p.includes("herbal")) return "mocktail-long";
       return "mocktail-up";
     }
+    // Modificador como base: o rótulo da ficha é o tipo escolhido.
+    if (role === "modificador") {
+      if (cat === "licor") {
+        if (p.includes("refrescante")) return "long";
+        if (p.includes("amadeirado") || p.includes("amargo")) return "build";
+        return "sour";
+      }
+      if (p.includes("amadeirado")) return "build";
+      return "spritz";
+    }
+    if (cat === "espumante") return "spritz";
+    if (cat === "vinho") {
+      if (p.includes("amadeirado")) return "build";
+      if (p.includes("citrico") && !p.includes("refrescante") && !bitter) return "sour";
+      return "spritz";
+    }
     // Melão + amaro/Ramazzotti: aperitivo long / spritz / spirit-forward
     if (bitter) {
       if (p.includes("refrescante") || lead === "melao" || fruitLead) return "spritz";
-      if (p.includes("amadeirado") || base.id === "whiskey") return "build";
+      if (p.includes("amadeirado") || whiskeyLike) return "build";
       if (p.includes("amargo") || leadIng?.group === "bitter") return "spirit-forward";
       return "spritz";
     }
-    if (p.includes("amargo") && (base.id === "whiskey" || base.id === "gin") && !fruitLead) {
+    if (p.includes("amargo") && (whiskeyLike || ginLike) && !fruitLead) {
       if (p.includes("amadeirado") || lead === "cafe" || lead === "chocolate") return "build";
       return "spirit-forward";
     }
     if (p.includes("refrescante") && !p.includes("picante")) {
       if (lead === "gengibre" || flavors.chord.includes("gengibre")) return "mule";
-      if (base.id === "gin" && (p.includes("herbal") || p.includes("floral"))) return "gin-tonic";
+      if (ginLike && (p.includes("herbal") || p.includes("floral"))) return "gin-tonic";
       if (lead === "melao") return "long";
+      if (cat === "saque" || cat === "soju") return "long";
       return "long";
     }
     if (p.includes("amargo") && p.includes("refrescante")) return "spritz";
@@ -234,12 +330,14 @@ window.CDMotor = (function () {
       p.includes("citrico") ||
       p.includes("frutado") ||
       p.includes("equilibrado") ||
-      fruitLead
+      fruitLead ||
+      cat === "pisco"
     ) {
       return "sour";
     }
-    if (p.includes("amadeirado") || base.id === "whiskey") return "build";
-    if (p.includes("herbal") && base.id === "gin") return "sour";
+    if (p.includes("amadeirado") || whiskeyLike) return "build";
+    if ((cat === "saque" || cat === "soju") && !fruitLead) return "long";
+    if (p.includes("herbal") && ginLike) return "sour";
     return "sour";
   }
 
@@ -350,10 +448,7 @@ window.CDMotor = (function () {
 
   function nameDrink(state, base, flavors, family, variant) {
     const lead = ingredientLabel(flavors.lead).toUpperCase();
-    const spiritBit =
-      base.type === "zero"
-        ? "ZERO"
-        : { vodka: "VODKA", gin: "GIN", rum: "RUM", whiskey: "WHISKEY", cachaca: "CANA", tequila: "AGAVE" }[base.id] || "TB";
+    const spiritBit = base.type === "zero" ? "ZERO" : nameBit(base.id, base.category);
     const famBit = {
       sour: "SOUR",
       daisy: "DAISY",
@@ -376,8 +471,11 @@ window.CDMotor = (function () {
     ];
     if (variant === "B") return `${lead} ${flavors.bridge ? ingredientLabel(flavors.bridge).toUpperCase() : "PONTE"}`;
     if (variant === "C") {
-      if (base.alt) return `${({ vodka: "VODKA", gin: "GIN", rum: "RUM", whiskey: "WHISKEY", cachaca: "CANA", tequila: "AGAVE" }[base.alt] || "ALT")} ${lead}`;
+      if (base.alt) return `${nameBit(base.alt, base.alt)} ${lead}`;
       return `${lead} SUAVE`;
+    }
+    if (base.type !== "zero" && base.id && base.category && base.id !== base.category) {
+      return `${spiritBit} ${lead}`;
     }
     return names[0];
   }
@@ -386,15 +484,22 @@ window.CDMotor = (function () {
     const items = [];
     const isZero = base.type === "zero";
     const spiritId = variant === "C" && base.alt ? base.alt : base.id;
-    const spiritLabel = isZero ? base.label : D().SPIRIT_LABELS[spiritId] || spiritId;
+    const activeCat = variant === "C" && base.alt ? spiritCategory(base.alt) : base.category || spiritCategory(base.id);
+    const activeRole = variant === "C" && base.alt ? spiritRole(base.alt) : base.role || spiritRole(base.id);
+    const spiritName = isZero ? base.label : spiritLabel(spiritId);
 
     let baseMl = props.base;
     if (variant === "C" && !base.alt) {
       // versão mais suave
       baseMl = Math.max(35, baseMl - 10);
     }
+    if (!isZero && (activeCat === "espumante" || activeCat === "vinho")) baseMl = Math.max(baseMl, 100);
+    else if (!isZero && (activeCat === "saque" || activeCat === "soju")) baseMl = Math.max(baseMl, 60);
+    else if (!isZero && activeRole === "modificador" && (activeCat === "vermouth" || activeCat === "bitter" || activeCat === "aperitivo")) {
+      baseMl = Math.max(baseMl, 50);
+    }
 
-    items.push({ nome: spiritLabel, qtd: baseMl, unidade: "ml", role: "base" });
+    items.push({ nome: spiritName, qtd: baseMl, unidade: "ml", role: "base" });
 
     // acid
     const acidSource =
@@ -412,6 +517,9 @@ window.CDMotor = (function () {
     const leadJuice = liquidName(lead, "juice");
     const leadSyrup = liquidName(lead, "syrup");
     let doceLeft = props.doce;
+    if (!isZero && activeRole === "modificador" && activeCat === "licor") {
+      doceLeft = Math.max(0, Math.round(doceLeft * 0.4));
+    }
 
     if (leadJuice && !["limao", "lima", "laranja", "grapefruit"].includes(lead)) {
       const fruitMl = family === "sour" || family === "mocktail-up" ? 20 : 25;
@@ -435,19 +543,22 @@ window.CDMotor = (function () {
       const sweetName =
         state.perfil.includes("doce") && liquidName("mel", "syrup")
           ? liquidName("mel", "syrup")
-          : spiritId === "tequila"
+          : activeCat === "tequila"
             ? "Néctar de agave"
             : "Xarope simples (1:1)";
       items.push({ nome: sweetName, qtd: doceLeft, unidade: "ml", role: "doce" });
     }
 
     // bitter for amargo / spirit-forward / amaro-as-sabor / spritz
+    const baseIsBitter = activeCat === "bitter" || activeCat === "aperitivo";
+    const sparklingLead = activeCat === "espumante" || activeCat === "vinho";
     const wantsBitter =
-      state.perfil.includes("amargo") ||
-      family === "spirit-forward" ||
-      family === "build" ||
-      family === "spritz" ||
-      isBitterLead(flavors, state);
+      !baseIsBitter &&
+      (state.perfil.includes("amargo") ||
+        family === "spirit-forward" ||
+        family === "build" ||
+        (family === "spritz" && !sparklingLead) ||
+        isBitterLead(flavors, state));
     if (wantsBitter) {
       const named = bitterLabel(state, flavors);
       const houseAmaro = named !== "Campari / amaro";
@@ -478,8 +589,14 @@ window.CDMotor = (function () {
       items.push({ nome: "Ginger beer", qtd: "COMPLETAR", unidade: "", role: "top" });
     }
     if (family === "spritz") {
-      items.push({ nome: "Espumante (TB) / Prosecco", qtd: "COMPLETAR", unidade: "", role: "top" });
-      items.push({ nome: "Soda", qtd: 20, unidade: "ml", role: "top" });
+      if (activeCat === "espumante") {
+        items.push({ nome: "Soda", qtd: 30, unidade: "ml", role: "top" });
+      } else if (activeCat === "vinho") {
+        items.push({ nome: "Soda", qtd: "COMPLETAR", unidade: "", role: "top" });
+      } else {
+        items.push({ nome: "Espumante brut", qtd: "COMPLETAR", unidade: "", role: "top" });
+        items.push({ nome: "Soda", qtd: 20, unidade: "ml", role: "top" });
+      }
     }
 
     // herbs as muddle / slap
@@ -552,12 +669,22 @@ window.CDMotor = (function () {
     if (base.suggested && base.type === "spirit") {
       parts.push({
         title: "Base",
-        text: `Destilado sugerido: ${base.label} pela heurística protagonista/perfil [BAR/TB].${base.alt ? ` Alternativa no card C: ${D().SPIRIT_LABELS[base.alt]}.` : ""}`,
+        text: `Destilado sugerido: ${base.label} pela heurística protagonista/perfil [BAR/TB].${base.alt ? ` Alternativa no card C: ${spiritLabel(base.alt)}.` : ""}`,
       });
     } else if (base.type === "zero") {
       parts.push({ title: "Zero álcool", text: `Base sem álcool: ${base.label}. Mantém ácido + doce + textura; ABV ≈ 0. [TB]` });
+    } else if (base.role === "modificador") {
+      const catLabel = (D().SPIRIT_CATEGORY_LABELS || {})[base.category] || base.category;
+      parts.push({
+        title: "Base",
+        text: `${base.label} entra como base desta ficha. Na casa é modificador (${catLabel}); o nome na receita é o tipo escolhido.${base.alt ? ` Alternativa no card C: ${spiritLabel(base.alt)}.` : ""}`,
+      });
     } else {
-      parts.push({ title: "Base", text: `Usando ${base.label} escolhido. [TB]` });
+      const fam =
+        base.category && base.category !== base.id
+          ? ` Família ${(D().SPIRIT_CATEGORY_LABELS || {})[base.category] || base.category}.`
+          : "";
+      parts.push({ title: "Base", text: `Usando ${base.label} escolhido.${fam} [TB]` });
     }
     parts.push({
       title: "Estrutura",
@@ -575,12 +702,14 @@ window.CDMotor = (function () {
     const ingredients = buildIngredients(state, base, flavors, family, props, variant);
     // for spirit-forward negroni-like, simplify ingredients
     if (family === "spirit-forward" && variant === "A") {
-      const spiritId = base.id;
-      const fixed = [
-        { nome: D().SPIRIT_LABELS[spiritId], qtd: props.base || 40, unidade: "ml", role: "base" },
-        { nome: "Vermute rosso", qtd: props.base >= 50 ? 25 : 20, unidade: "ml", role: "mod" },
-        { nome: bitterLabel(state, flavors), qtd: props.base >= 50 ? 25 : 20, unidade: "ml", role: "amargo" },
-      ];
+      const cat = base.category || spiritCategory(base.id);
+      const fixed = [{ nome: spiritLabel(base.id), qtd: props.base || 40, unidade: "ml", role: "base" }];
+      if (cat !== "vermouth") {
+        fixed.push({ nome: "Vermute rosso", qtd: props.base >= 50 ? 25 : 20, unidade: "ml", role: "mod" });
+      }
+      if (cat !== "bitter" && cat !== "aperitivo") {
+        fixed.push({ nome: bitterLabel(state, flavors), qtd: props.base >= 50 ? 25 : 20, unidade: "ml", role: "amargo" });
+      }
       if (flavors.chord.includes("laranja") || state.perfil.includes("amadeirado")) {
         /* garnish handles orange */
       }
@@ -698,10 +827,9 @@ window.CDMotor = (function () {
         /* cycle zero base via clearing — generate will pick */
         s._forceZeroCycle = true;
       } else {
-        const order = ["vodka", "gin", "rum", "whiskey", "cachaca", "tequila"];
-        const cur = s.destilado || suggestSpirit(s, null);
-        const idx = order.indexOf(cur);
-        s.destilado = order[(idx + 1) % order.length];
+        const cur = spiritCategory(s.destilado) || suggestSpirit(s, null);
+        const idx = BASE_CYCLE.indexOf(cur);
+        s.destilado = BASE_CYCLE[(idx + 1) % BASE_CYCLE.length];
       }
     } else if (action === "outra-rodada") {
       // rotate sabores: move secondary affinities into play by shuffling secondary

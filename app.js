@@ -14,8 +14,10 @@
   const state = {
     step: "home",
     alcool: null,
-    destilado: null, // null = app escolhe; string = spirit; "__auto__" sentinel for UI
+    destilado: null, // null = app escolhe; string = spirit id
     destiladoAuto: true,
+    spiritQuery: "",
+    spiritCat: "todas",
     sabores: [],
     perfil: [],
     forca: "equilibrado",
@@ -127,6 +129,8 @@
     state.alcool = null;
     state.destilado = null;
     state.destiladoAuto = true;
+    state.spiritQuery = "";
+    state.spiritCat = "todas";
     state.sabores = [];
     state.perfil = [];
     state.forca = "equilibrado";
@@ -275,28 +279,133 @@
     const spiritBox = $("#spirit-section");
     if (state.alcool === "com") {
       spiritBox.style.display = "block";
-      const sg = $("#spirit-chips");
-      sg.innerHTML =
-        `<button type="button" class="chip auto-pick ${state.destiladoAuto ? "on" : ""}" data-sp="__auto__">Deixa o app escolher</button>` +
-        CDData.SPIRITS.map(
-          (s) =>
-            `<button type="button" class="chip ${!state.destiladoAuto && state.destilado === s.id ? "on" : ""}" data-sp="${s.id}">${escapeHtml(s.label)}</button>`
-        ).join("");
-      sg.querySelectorAll("[data-sp]").forEach((btn) => {
-        btn.onclick = () => {
-          if (btn.dataset.sp === "__auto__") {
-            state.destiladoAuto = true;
-            state.destilado = null;
-          } else {
-            state.destiladoAuto = false;
-            state.destilado = btn.dataset.sp;
-          }
-          renderAlcool();
-        };
-      });
+      renderSpiritPicker();
     } else {
       spiritBox.style.display = "none";
     }
+  }
+
+  function fold(s) {
+    return String(s || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase();
+  }
+
+  function houseSpirits() {
+    return CDData.SPIRITS.filter((s) => {
+      const blob = fold(`${s.id} ${s.label} ${s.category || ""} ${s.role || ""}`);
+      return !/sem[\s-]*alcool|0\s*%|zero[\s-]*alcool|alcohol[\s-]*free/.test(blob);
+    });
+  }
+
+  function renderSpiritPicker() {
+    const spirits = houseSpirits();
+    const hint = $("#spirit-hint");
+    if (hint) {
+      hint.textContent = `${spirits.length} tipos da casa, sem marca. Busque ou filtre por família.`;
+    }
+
+    const auto = $("#spirit-auto");
+    auto.innerHTML = `<button type="button" class="chip auto-pick ${state.destiladoAuto ? "on" : ""}" data-sp="__auto__">Deixa o app escolher</button>`;
+    auto.querySelector("[data-sp]").onclick = () => {
+      state.destiladoAuto = true;
+      state.destilado = null;
+      const groups = $("#spirit-groups");
+      if (groups) groups.querySelectorAll("[data-sp]").forEach((b) => b.classList.remove("on"));
+      auto.querySelector("[data-sp]").classList.add("on");
+    };
+
+    const order = CDData.SPIRIT_CATEGORY_ORDER.filter((c) => spirits.some((s) => s.category === c));
+    const cats = $("#spirit-cats");
+    const catButtons = [{ id: "todas", label: "Todas" }].concat(
+      order.map((id) => ({ id, label: CDData.SPIRIT_CATEGORY_LABELS[id] || id }))
+    );
+    cats.innerHTML = catButtons
+      .map(
+        (c) =>
+          `<button type="button" class="cat-pill ${state.spiritCat === c.id ? "on" : ""}" data-cat="${c.id}" role="tab" aria-selected="${state.spiritCat === c.id}">${escapeHtml(c.label)}</button>`
+      )
+      .join("");
+    cats.querySelectorAll("[data-cat]").forEach((btn) => {
+      btn.onclick = () => {
+        state.spiritCat = btn.dataset.cat;
+        cats.querySelectorAll("[data-cat]").forEach((b) => {
+          const on = b.dataset.cat === state.spiritCat;
+          b.classList.toggle("on", on);
+          b.setAttribute("aria-selected", String(on));
+        });
+        renderSpiritGroups(spirits);
+      };
+    });
+
+    const search = $("#spirit-search");
+    if (search && document.activeElement !== search) search.value = state.spiritQuery;
+    if (search && !search.dataset.bound) {
+      search.dataset.bound = "1";
+      search.oninput = () => {
+        state.spiritQuery = search.value;
+        renderSpiritGroups(houseSpirits());
+      };
+    }
+
+    renderSpiritGroups(spirits);
+  }
+
+  function renderSpiritGroups(spirits) {
+    const q = fold(state.spiritQuery.trim());
+    const cat = state.spiritCat || "todas";
+    let list = spirits.filter((s) => (cat === "todas" ? true : s.category === cat));
+    if (q) {
+      list = list.filter((s) => {
+        const fam = CDData.SPIRIT_CATEGORY_LABELS[s.category] || s.category;
+        return fold(s.label).includes(q) || fold(fam).includes(q);
+      });
+    }
+
+    const root = $("#spirit-groups");
+    if (!list.length) {
+      root.innerHTML = `<p class="spirit-empty">Nenhum tipo com esse filtro.</p>`;
+      return;
+    }
+
+    const order = CDData.SPIRIT_CATEGORY_ORDER.slice();
+    const seen = new Set();
+    const groups = [];
+    order.forEach((c) => {
+      const items = list.filter((s) => s.category === c);
+      if (!items.length) return;
+      seen.add(c);
+      groups.push({ id: c, items });
+    });
+    list.forEach((s) => {
+      if (seen.has(s.category)) return;
+      seen.add(s.category);
+      groups.push({ id: s.category, items: list.filter((x) => x.category === s.category) });
+    });
+
+    root.innerHTML = groups
+      .map((g) => {
+        const title = CDData.SPIRIT_CATEGORY_LABELS[g.id] || g.id;
+        const chips = g.items
+          .map(
+            (s) =>
+              `<button type="button" class="chip ${!state.destiladoAuto && state.destilado === s.id ? "on" : ""}" data-sp="${escapeHtml(s.id)}">${escapeHtml(s.label)}</button>`
+          )
+          .join("");
+        return `<section class="spirit-group"><h3>${escapeHtml(title)}</h3><div class="chip-grid">${chips}</div></section>`;
+      })
+      .join("");
+
+    root.querySelectorAll("[data-sp]").forEach((btn) => {
+      btn.onclick = () => {
+        state.destiladoAuto = false;
+        state.destilado = btn.dataset.sp;
+        const autoBtn = $("#spirit-auto [data-sp]");
+        if (autoBtn) autoBtn.classList.remove("on");
+        root.querySelectorAll("[data-sp]").forEach((b) => b.classList.toggle("on", b.dataset.sp === state.destilado));
+      };
+    });
   }
 
   function renderSabores() {

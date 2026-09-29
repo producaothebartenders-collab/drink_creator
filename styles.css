@@ -268,6 +268,79 @@ h1.screen-title {
   border-style: solid;
 }
 
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
+.spirit-hint { margin: 0 0 12px; }
+.spirit-tools {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  background: linear-gradient(to bottom, var(--bg) 78%, rgba(12, 11, 10, 0));
+  padding: 4px 0 10px;
+  margin-top: 12px;
+}
+#spirit-search {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--bg-3);
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+  margin-bottom: 10px;
+}
+#spirit-search:focus {
+  outline: none;
+  border-color: var(--gold);
+}
+.cat-scroll {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  scrollbar-width: none;
+}
+.cat-scroll::-webkit-scrollbar { display: none; }
+.cat-pill {
+  flex: 0 0 auto;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+}
+.cat-pill.on {
+  color: var(--gold-soft);
+  border-color: var(--gold);
+  background: rgba(201, 162, 39, 0.15);
+}
+.spirit-group { margin-bottom: 14px; }
+.spirit-group h3 {
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gold-dim);
+  margin: 0 0 8px;
+}
+.spirit-empty {
+  color: var(--muted);
+  font-size: 13px;
+  padding: 8px 0 16px;
+}
+
 .section-label {
   font-size: 12px;
   letter-spacing: 0.12em;

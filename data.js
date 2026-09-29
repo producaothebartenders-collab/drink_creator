@@ -53,16 +53,119 @@ window.CDData = (function () {
     { id: "refrescante", label: "Refrescante" },
   ];
 
-  const SPIRITS = [
-    { id: "vodka", label: "Vodka (TB)", house: true },
-    { id: "gin", label: "Gin (TB)", house: true },
-    { id: "rum", label: "Rum (TB)", house: true },
-    { id: "whiskey", label: "Whiskey (TB)", house: true },
-    { id: "cachaca", label: "Cachaça (TB)", house: true },
-    { id: "tequila", label: "Tequila (TB)", house: true },
+  /** Tipos da casa (matriz-bebidas-tipos): rótulo sem marca e sem volume.
+      SKUs zero álcool (gin sem álcool, espumante 0%) não entram na lista com álcool. */
+  const SPIRIT_TYPES = [
+    { id: "cachaca-prata", label: "Cachaça prata", category: "cachaca", role: "base", house: true },
+    { id: "cachaca-ouro", label: "Cachaça ouro", category: "cachaca", role: "base", house: true },
+    { id: "cachaca", label: "Cachaça", category: "cachaca", role: "base", house: true },
+    { id: "cachaca-jambu", label: "Cachaça de jambu", category: "cachaca", role: "base", house: true },
+    { id: "vodka", label: "Vodka", category: "vodka", role: "base", house: true },
+    { id: "vodka-cucumber-mint", label: "Vodka cucumber & mint", category: "vodka", role: "base", house: true },
+    { id: "vodka-pear", label: "Vodka pear", category: "vodka", role: "base", house: true },
+    { id: "vodka-vanilla", label: "Vodka vanilla", category: "vodka", role: "base", house: true },
+    { id: "vodka-coco", label: "Vodka de coco", category: "vodka", role: "base", house: true },
+    { id: "rum-branco", label: "Rum branco", category: "rum", role: "base", house: true },
+    { id: "rum-ouro", label: "Rum ouro", category: "rum", role: "base", house: true },
+    { id: "rum-envelhecido", label: "Rum envelhecido", category: "rum", role: "base", house: true },
+    { id: "rum-especiado", label: "Rum especiado", category: "rum", role: "base", house: true },
+    { id: "rum-coco", label: "Rum de coco", category: "rum", role: "base", house: true },
+    { id: "steinhager", label: "Steinhäger", category: "steinhager", role: "base", house: true },
+    { id: "gin", label: "Gin", category: "gin", role: "base", house: true },
+    { id: "gin-frutado", label: "Gin frutado", category: "gin", role: "base", house: true },
+    { id: "whisky", label: "Whisky", category: "whiskey", role: "base", house: true },
+    { id: "whisky-12", label: "Whisky 12 anos", category: "whiskey", role: "base", house: true },
+    { id: "whisky-18", label: "Whisky 18 anos", category: "whiskey", role: "base", house: true },
+    { id: "whisky-double", label: "Whisky double", category: "whiskey", role: "base", house: true },
+    { id: "bourbon", label: "Bourbon", category: "whiskey", role: "base", house: true },
+    { id: "whiskey-fire", label: "Whiskey fire", category: "whiskey", role: "base", house: true },
+    { id: "espumante-brut", label: "Espumante brut", category: "espumante", role: "base", house: true },
+    { id: "espumante-prosecco", label: "Espumante prosecco", category: "espumante", role: "base", house: true },
+    { id: "espumante-moscatel", label: "Espumante moscatel", category: "espumante", role: "base", house: true },
+    { id: "espumante-rose", label: "Espumante rosé", category: "espumante", role: "base", house: true },
+    { id: "vermouth-rosso", label: "Vermouth rosso", category: "vermouth", role: "modificador", house: true },
+    { id: "vermouth-bianco", label: "Vermouth bianco", category: "vermouth", role: "modificador", house: true },
+    { id: "vermouth-rosato", label: "Vermouth rosato", category: "vermouth", role: "modificador", house: true },
+    { id: "vermouth-dry", label: "Vermouth dry", category: "vermouth", role: "modificador", house: true },
+    { id: "bitter-italiano", label: "Bitter italiano", category: "bitter", role: "modificador", house: true },
+    { id: "bitter-angostura", label: "Bitter angostura", category: "bitter", role: "modificador", house: true },
+    { id: "bitter-cacau", label: "Bitter de cacau", category: "bitter", role: "modificador", house: true },
+    { id: "bitter-artesanal", label: "Bitter artesanal", category: "bitter", role: "modificador", house: true },
+    { id: "bitter-herbal", label: "Bitter herbal", category: "bitter", role: "modificador", house: true },
+    { id: "bitter-alcachofra", label: "Bitter de alcachofra", category: "bitter", role: "modificador", house: true },
+    { id: "fernet", label: "Fernet", category: "bitter", role: "modificador", house: true },
+    { id: "bitter-digestivo", label: "Bitter digestivo", category: "bitter", role: "modificador", house: true },
+    { id: "aperitivo-laranja", label: "Aperitivo laranja", category: "aperitivo", role: "modificador", house: true },
+    { id: "aperitivo-vinho", label: "Aperitivo de vinho", category: "aperitivo", role: "modificador", house: true },
+    { id: "saque", label: "Saquê", category: "saque", role: "base", house: true },
+    { id: "soju", label: "Soju", category: "soju", role: "base", house: true },
+    { id: "vinho-branco", label: "Vinho branco", category: "vinho", role: "base", house: true },
+    { id: "vinho-tinto", label: "Vinho tinto", category: "vinho", role: "base", house: true },
+    { id: "vinho-rose", label: "Vinho rosé", category: "vinho", role: "base", house: true },
+    { id: "jerez", label: "Vinho de jerez", category: "vinho", role: "base", house: true },
+    { id: "conhaque", label: "Conhaque", category: "conhaque", role: "base", house: true },
+    { id: "brandy", label: "Brandy", category: "brandy", role: "base", house: true },
+    { id: "tequila-prata", label: "Tequila prata", category: "tequila", role: "base", house: true },
+    { id: "tequila-ouro", label: "Tequila ouro", category: "tequila", role: "base", house: true },
+    { id: "brize", label: "Brizê", category: "brize", role: "base", house: true },
+    { id: "pisco", label: "Pisco", category: "pisco", role: "base", house: true },
+    { id: "licor-pessego", label: "Licor de pêssego", category: "licor", role: "modificador", house: true },
+    { id: "licor-framboesa", label: "Licor de framboesa", category: "licor", role: "modificador", house: true },
+    { id: "licor-curacao-blue", label: "Licor curaçao blue", category: "licor", role: "modificador", house: true },
+    { id: "licor-curacao", label: "Licor curaçao", category: "licor", role: "modificador", house: true },
+    { id: "licor-cafe", label: "Licor de café", category: "licor", role: "modificador", house: true },
+    { id: "triple-sec", label: "Triple sec", category: "licor", role: "modificador", house: true },
+    { id: "licor-baunilha-citrico", label: "Licor baunilha cítrico", category: "licor", role: "modificador", house: true },
+    { id: "licor-cream", label: "Licor cream", category: "licor", role: "modificador", house: true },
+    { id: "licor-avela", label: "Licor de avelã", category: "licor", role: "modificador", house: true },
+    { id: "licor-whisky-mel", label: "Licor de whisky e mel", category: "licor", role: "modificador", house: true },
+    { id: "licor-elderflower", label: "Licor de elderflower", category: "licor", role: "modificador", house: true },
+    { id: "licor-canela", label: "Licor de canela", category: "licor", role: "modificador", house: true },
+    { id: "limoncello", label: "Limoncello", category: "licor", role: "modificador", house: true },
+    { id: "licor-chocolate", label: "Licor de chocolate", category: "licor", role: "modificador", house: true },
+    { id: "amaretto", label: "Amaretto", category: "licor", role: "modificador", house: true },
   ];
 
-  /** Heurística §3.3 — protagonista/perfil → base */
+  function isZeroAlcoholSku(item) {
+    const blob = `${item.id} ${item.label} ${item.category || ""} ${item.role || ""}`
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase();
+    return /sem[\s-]*alcool|0\s*%|zero[\s-]*alcool|alcohol[\s-]*free/.test(blob);
+  }
+
+  const SPIRITS = SPIRIT_TYPES.filter((s) => !isZeroAlcoholSku(s));
+
+  /** Famílias para agrupar o passo Destilado e para a heurística de base. */
+  const SPIRIT_CATEGORY_ORDER = [
+    "vodka", "gin", "cachaca", "rum", "whiskey", "tequila", "steinhager", "brize",
+    "pisco", "conhaque", "brandy", "saque", "soju", "espumante", "vinho",
+    "vermouth", "aperitivo", "bitter", "licor",
+  ];
+
+  const SPIRIT_CATEGORY_LABELS = {
+    vodka: "Vodka",
+    gin: "Gin",
+    cachaca: "Cachaça",
+    rum: "Rum",
+    whiskey: "Whisky",
+    tequila: "Tequila",
+    steinhager: "Steinhäger",
+    brize: "Brizê",
+    pisco: "Pisco",
+    conhaque: "Conhaque",
+    brandy: "Brandy",
+    saque: "Saquê",
+    soju: "Soju",
+    espumante: "Espumante",
+    vinho: "Vinho",
+    vermouth: "Vermouth",
+    aperitivo: "Aperitivo",
+    bitter: "Bitter",
+    licor: "Licor",
+  };
+
+  /** Heurística §3.3 — protagonista/perfil → família. weight < 1 é default leve, sem regra de casa. */
   const SPIRIT_HEURISTICS = [
     { spirits: ["gin"], tags: ["herbal", "floral", "pepino", "limao", "lima", "manjericao", "elderflower", "lavanda", "alecrim", "melao"] },
     { spirits: ["rum"], tags: ["abacaxi", "coco", "manga", "baunilha", "banana", "tropical"] },
@@ -70,6 +173,13 @@ window.CDData = (function () {
     { spirits: ["vodka"], tags: ["morango", "framboesa", "amora", "melancia", "melao", "pepino", "cafe", "equilibrado", "frutado"] },
     { spirits: ["whiskey"], tags: ["amadeirado", "cafe", "chocolate", "maca", "pera", "canela", "amargo", "pessego", "amaro", "ramazzotti"] },
     { spirits: ["tequila"], tags: ["picante", "chile", "cilantro", "manga", "melancia", "lima", "abacaxi", "tomate"] },
+    { spirits: ["espumante"], tags: ["floral", "frutado", "refrescante", "morango", "pessego", "framboesa"], weight: 0.5 },
+    { spirits: ["pisco"], tags: ["citrico", "limao", "lima", "floral"], weight: 0.5 },
+    { spirits: ["saque"], tags: ["pera", "pessego", "lichia", "floral", "pepino"], weight: 0.5 },
+    { spirits: ["soju"], tags: ["frutado", "refrescante", "melancia", "melao", "morango"], weight: 0.5 },
+    { spirits: ["conhaque", "brandy"], tags: ["amadeirado", "maca", "pera", "cafe", "chocolate", "canela"], weight: 0.5 },
+    { spirits: ["vinho"], tags: ["frutado", "floral", "refrescante", "morango", "pessego"], weight: 0.5 },
+    { spirits: ["steinhager"], tags: ["herbal", "limao", "alecrim"], weight: 0.5 },
   ];
 
   /** Copos MATRIZ (subset útil para o motor) */
@@ -128,14 +238,14 @@ window.CDData = (function () {
     baunilha: { juice: null, syrup: "Xarope de baunilha", garnish: null },
   };
 
-  const SPIRIT_LABELS = {
-    vodka: "Vodka (TB)",
-    gin: "Gin (TB)",
-    rum: "Rum prata (TB)",
-    whiskey: "Whiskey (TB)",
-    cachaca: "Cachaça (TB)",
-    tequila: "Tequila (TB)",
-  };
+  const SPIRIT_LABELS = {};
+  SPIRITS.forEach((s) => {
+    SPIRIT_LABELS[s.id] = s.label;
+  });
+  // Baldes usados pelo motor (auto / alternativa) quando o id da família não é um SKU.
+  Object.keys(SPIRIT_CATEGORY_LABELS).forEach((cat) => {
+    if (!SPIRIT_LABELS[cat]) SPIRIT_LABELS[cat] = SPIRIT_CATEGORY_LABELS[cat];
+  });
 
   const ZERO_BASES = [
     { id: "cha-hibisco", label: "Chá de hibisco concentrado" },
@@ -144,6 +254,20 @@ window.CDData = (function () {
     { id: "blend-zero", label: "Blend zero (TB)" },
     { id: "tisana", label: "Tisana herbal" },
   ];
+
+  function getSpirit(id) {
+    return SPIRITS.find((s) => s.id === id) || null;
+  }
+
+  function spiritCategory(id) {
+    const rec = getSpirit(id);
+    return rec ? rec.category : id || null;
+  }
+
+  function spiritRole(id) {
+    const rec = getSpirit(id);
+    return rec ? rec.role : "base";
+  }
 
   function getIngredient(id) {
     return INGREDIENTS.find((i) => i.id === id);
@@ -159,11 +283,16 @@ window.CDData = (function () {
     PROFILES,
     SPIRITS,
     SPIRIT_HEURISTICS,
+    SPIRIT_CATEGORY_ORDER,
+    SPIRIT_CATEGORY_LABELS,
     GLASSES,
     LIQUID_MAP,
     SPIRIT_LABELS,
     ZERO_BASES,
     getIngredient,
     getAffinities,
+    getSpirit,
+    spiritCategory,
+    spiritRole,
   };
 })();
