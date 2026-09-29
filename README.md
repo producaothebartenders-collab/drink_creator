@@ -18,7 +18,7 @@ Publicação pelo GitHub Pages a partir do branch `main`, pasta `/` (raiz). O ar
 | `styles.css` | Visual dark bar |
 | `app.js` | Interface: stepper, chips, resultado e ajustes |
 | `motor.js` | Pipeline de sugestão |
-| `data.js` | Subset curado: ingredientes (incl. **melão**, **amaro**, **Ramazzotti**), tipos de bebida da casa (sem marca), pairing, copos da MATRIZ e heurística de base |
+| `data.js` | 220 sabores da lista mestre (nome, sem marca), afinidades só onde já havia heurística, tipos de bebida da casa, pairing, copos da MATRIZ e heurística de base |
 
 Os arquivos ficam na **raiz** do repositório. Caminhos de CSS e JS são relativos, então a página funciona tanto no Pages (`/drink_creator/`) quanto num servidor local.
 
