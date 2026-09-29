@@ -4,6 +4,14 @@
 window.CDMotor = (function () {
   const D = () => window.CDData;
 
+  /** Itens digitados na ficha. Vale só durante assemble, para o papel e o rótulo. */
+  let activeCustoms = null;
+
+  function customRecord(id) {
+    if (!activeCustoms || !id) return null;
+    return activeCustoms[id] || null;
+  }
+
   function clone(o) {
     return JSON.parse(JSON.stringify(o));
   }
@@ -28,6 +36,8 @@ window.CDMotor = (function () {
 
   function flavorLabel(id) {
     if (!id) return "";
+    const custom = customRecord(id);
+    if (custom && custom.label) return custom.label;
     const ing = D().getIngredient(id);
     if (ing) return ing.label;
     if (String(id).indexOf("juice:") === 0) {
@@ -274,6 +284,8 @@ window.CDMotor = (function () {
   }
 
   function roleOf(id) {
+    const custom = customRecord(id);
+    if (custom && custom.kind === "flavor") return "doce";
     const spirit = D().getSpirit(id);
     const group = groupOf(id);
     if (isLemonAcid(id)) return "acido";
@@ -1005,6 +1017,7 @@ window.CDMotor = (function () {
       glassId: glasses[0] ? glasses[0].id : null,
       lengthenerId,
       omitAcid: false,
+      customs: {},
     };
     const live = assemble(state, picks);
     return {
@@ -1145,6 +1158,8 @@ window.CDMotor = (function () {
   }
 
   function lineName(id, role) {
+    const custom = customRecord(id);
+    if (custom && custom.kind === "flavor" && custom.label) return custom.label;
     const label = flavorLabel(id);
     const mapped = D().LIQUID_MAP[id];
     if (role === "acido") return (mapped && mapped.juice) || barLiquid(id, "juice") || `Suco de ${label.toLowerCase()}`;
@@ -1229,12 +1244,58 @@ window.CDMotor = (function () {
       "mocktail-long": "COOLER",
     }[family] || "DRINK";
     if (base.type !== "zero" && base.id && base.category && base.id !== base.category) {
-      return `${nameBit(base.id, base.category)} ${leadBit}`;
+      const customBase = customRecord(base.id);
+      const bit = customBase && customBase.kind === "base" && customBase.label
+        ? customBase.label.toUpperCase()
+        : nameBit(base.id, base.category);
+      return `${bit} ${leadBit}`;
     }
     return `${leadBit} ${famBit}`;
   }
 
+  function resolveBase(id, state) {
+    const custom = customRecord(id);
+    if (custom && custom.kind === "base") {
+      if (state.alcool === "sem") {
+        return { type: "zero", id: custom.id, label: custom.label, category: "zero", role: "zero", suggested: false };
+      }
+      return { type: "spirit", id: custom.id, label: custom.label, category: "custom", role: "base", suggested: false };
+    }
+    return baseRecord(id, state);
+  }
+
+  function resolveFoam(id) {
+    if (!id) return null;
+    const custom = customRecord(id);
+    if (custom && custom.kind === "foam") return { id: custom.id, label: custom.label };
+    return D().FOAMS.find((f) => f.id === id) || null;
+  }
+
+  function resolveGlass(family, id) {
+    const custom = customRecord(id);
+    if (custom && custom.kind === "glass") {
+      const ml = Number(custom.ml);
+      return {
+        id: custom.id,
+        name: custom.label,
+        ml: ml > 0 ? ml : 300,
+        why: "Copo livre informado na ficha.",
+      };
+    }
+    return chooseGlass(family, id || "auto");
+  }
+
   function assemble(rawState, picks) {
+    const prevCustoms = activeCustoms;
+    activeCustoms = (picks && picks.customs) || null;
+    try {
+      return assembleBody(rawState, picks);
+    } finally {
+      activeCustoms = prevCustoms;
+    }
+  }
+
+  function assembleBody(rawState, picks) {
     const state = rawState.sabores ? rawState : validate(rawState);
     const safe = picks || {};
     const flavorIds = (safe.flavorIds || state.sabores || []).slice();
@@ -1244,7 +1305,7 @@ window.CDMotor = (function () {
       lengthener = getLengthener(safe.lengthenerId, state) || getLengthener("soda", state);
     }
 
-    const base = baseRecord(safe.baseId, state);
+    const base = resolveBase(safe.baseId, state);
     const view = flavorView(state, flavorIds);
     let family = chooseFamily(state, base, view);
     const shift = applyLengthenerFamily(family, state, base, view, lengthener);
@@ -1339,7 +1400,7 @@ window.CDMotor = (function () {
       });
     }
 
-    const foam = safe.foamId ? D().FOAMS.find((f) => f.id === safe.foamId) : null;
+    const foam = resolveFoam(safe.foamId);
     if (foam) items.push({ nome: foam.label, qtd: "COBERTURA", unidade: "", role: "espuma" });
 
     const tech = techniqueFor(family);
@@ -1347,7 +1408,7 @@ window.CDMotor = (function () {
     if (lengthener) preparo = preparo.replace("misturar levemente.", "completar com o alongador; misturar levemente.");
     if (foam) preparo += " Finalizar com a espuma.";
 
-    const glass = chooseGlass(family, safe.glassId || "auto");
+    const glass = resolveGlass(family, safe.glassId || "auto");
     const sweetSum = sumMap(sweetMap);
     const acidSum = sumMap(acidMap);
 

@@ -104,6 +104,8 @@
   }
 
   function reassemble() {
+    const scrollY = window.scrollY;
+    const catalogScroll = [...document.querySelectorAll(".catalog-list")].map((el) => [el, el.scrollTop]);
     const live = CDMotor.assemble(state.session.state, state.picks);
     if (live.flavorIds && state.picks) state.picks.flavorIds = live.flavorIds.slice();
     state.session.ficha = live.ficha;
@@ -111,6 +113,12 @@
     state.session.warnings = live.warnings;
     paintLive();
     syncFlavorChips();
+    syncOmitAcidChip();
+    ["bases", "flavors", "foams", "glasses"].forEach(syncCatalogOnStates);
+    catalogScroll.forEach(([el, top]) => {
+      if (el.isConnected) el.scrollTop = top;
+    });
+    window.scrollTo(0, scrollY);
   }
 
   function syncFlavorChips() {
@@ -119,6 +127,12 @@
     root.querySelectorAll("[data-flavor]").forEach((btn) => {
       btn.classList.toggle("on", state.picks.flavorIds.includes(btn.dataset.flavor));
     });
+  }
+
+  function syncOmitAcidChip() {
+    const btn = $("#btn-sem-limao");
+    if (!btn || !state.picks) return;
+    btn.classList.toggle("on", !!state.picks.omitAcid);
   }
 
   function startCreate() {
@@ -846,7 +860,13 @@
     const st = state.session && state.session.state;
     if (!st) return [];
     if (kind === "bases") return CDMotor.catalogBases(st).map((b) => ({ id: b.id, label: b.label }));
-    if (kind === "flavors") return CDMotor.catalogFlavors().map((f) => ({ id: f.id, label: flavorChipText(f) }));
+    if (kind === "flavors") {
+      return CDMotor.catalogFlavors().map((f) => ({
+        id: f.id,
+        label: flavorChipText(f),
+        aliases: [f.label],
+      }));
+    }
     if (kind === "foams") return CDMotor.catalogFoams().map((f) => ({ id: f.id, label: f.label }));
     if (kind === "glasses") return CDMotor.catalogGlasses().map((g) => ({ id: g.id, label: g.name }));
     return [];
@@ -865,7 +885,7 @@
     const kind = box.dataset.catalog;
     const input = box.querySelector("input");
     const q = fold((input && input.value) || "");
-    const items = catalogEntries(kind).filter((it) => !q || fold(it.label).includes(q));
+    const items = catalogEntries(kind).filter((it) => !q || fold(it.label).includes(q) || (it.aliases || []).some((alias) => fold(alias).includes(q)));
     const list = box.querySelector(".catalog-list");
     list.innerHTML = items.length
       ? items.map((it) => `<button type="button" class="catalog-item${catalogIsOn(kind, it.id) ? " on" : ""}" data-id="${escapeHtml(it.id)}">${escapeHtml(it.label)}</button>`).join("")
@@ -875,36 +895,307 @@
     });
   }
 
+  function syncCatalogOnStates(kind) {
+    const box = document.querySelector(`.catalog[data-catalog="${kind}"]`);
+    if (!box) return;
+    box.querySelectorAll(".catalog-item").forEach((btn) => {
+      btn.classList.toggle("on", catalogIsOn(kind, btn.dataset.id));
+    });
+  }
+
+  function poolRoot(kind) {
+    if (kind === "bases") return $("#pool-bases");
+    if (kind === "flavors") return $("#pool-flavors");
+    if (kind === "foams") return $("#pool-foams");
+    if (kind === "glasses") return $("#pool-glasses");
+    return null;
+  }
+
+  function chipLabel(kind, item) {
+    if (!item) return "";
+    if (kind === "flavors") return flavorChipText(item);
+    if (kind === "glasses") return String(item.name || item.label || "").replace(/Copo |Taça /g, "");
+    return item.label || "";
+  }
+
+  function poolAttr(kind) {
+    if (kind === "bases") return "data-base";
+    if (kind === "flavors") return "data-flavor";
+    if (kind === "foams") return "data-foam";
+    if (kind === "glasses") return "data-glass";
+    return "data-id";
+  }
+
+  function bindPoolChip(kind, btn) {
+    if (kind === "bases") {
+      btn.onclick = () => {
+        state.picks.baseId = btn.getAttribute("data-base");
+        syncPoolSelection("bases");
+        reassemble();
+      };
+    } else if (kind === "flavors") {
+      btn.onclick = () => toggleFlavorId(btn.getAttribute("data-flavor"));
+    } else if (kind === "foams") {
+      btn.onclick = () => {
+        state.picks.foamId = btn.getAttribute("data-foam") || null;
+        syncPoolSelection("foams");
+        reassemble();
+      };
+    } else if (kind === "glasses") {
+      btn.onclick = () => {
+        state.picks.glassId = btn.getAttribute("data-glass");
+        syncPoolSelection("glasses");
+        reassemble();
+      };
+    }
+  }
+
+  function ensurePoolChip(kind, item) {
+    const root = poolRoot(kind);
+    if (!root || !item) return null;
+    const attr = poolAttr(kind);
+    let btn = root.querySelector(`[${attr}="${CSS.escape(item.id)}"]`);
+    if (!btn) {
+      btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "chip";
+      btn.setAttribute(attr, item.id);
+      btn.textContent = chipLabel(kind, item);
+      bindPoolChip(kind, btn);
+      if (kind === "foams") {
+        const none = root.querySelector('[data-foam=""]');
+        if (none) root.insertBefore(btn, none);
+        else root.appendChild(btn);
+      } else root.appendChild(btn);
+    }
+    return btn;
+  }
+
+  function syncPoolSelection(kind) {
+    const root = poolRoot(kind);
+    if (!root || !state.picks) return;
+    if (kind === "bases") {
+      root.querySelectorAll("[data-base]").forEach((b) => b.classList.toggle("on", b.getAttribute("data-base") === state.picks.baseId));
+    } else if (kind === "flavors") {
+      syncFlavorChips();
+      syncOmitAcidChip();
+    } else if (kind === "foams") {
+      root.querySelectorAll("[data-foam]").forEach((b) => {
+        const id = b.getAttribute("data-foam") || null;
+        b.classList.toggle("on", id === state.picks.foamId || (!id && !state.picks.foamId));
+      });
+    } else if (kind === "glasses") {
+      root.querySelectorAll("[data-glass]").forEach((b) => b.classList.toggle("on", b.getAttribute("data-glass") === state.picks.glassId));
+    }
+  }
+
+  function rememberLemon(ids) {
+    const lemons = (ids || []).filter((id) => CDMotor.isLemonAcid(id));
+    if (lemons.length) state.picks.lemonBeforeOmit = lemons.slice();
+  }
+
+  function restoreRememberedLemon() {
+    const remembered = (state.picks.lemonBeforeOmit || []).filter((id) => CDMotor.isLemonAcid(id));
+    if (!remembered.length) return;
+    if (state.picks.flavorIds.some((id) => CDMotor.isLemonAcid(id))) return;
+    remembered.forEach((id) => {
+      if (!state.picks.flavorIds.includes(id)) state.picks.flavorIds.push(id);
+    });
+  }
+
+  function toggleFlavorId(id) {
+    if (!state.picks || !id) return false;
+    const arr = state.picks.flavorIds;
+    const i = arr.indexOf(id);
+    if (i >= 0) {
+      const lemon = CDMotor.isLemonAcid(id);
+      if (arr.length === 1 && !lemon) return false;
+      arr.splice(i, 1);
+      if (lemon && !arr.some((fid) => CDMotor.isLemonAcid(fid))) {
+        rememberLemon([id]);
+        state.picks.omitAcid = true;
+      }
+    } else {
+      arr.push(id);
+      if (CDMotor.isLemonAcid(id)) state.picks.omitAcid = false;
+    }
+    reassemble();
+    return true;
+  }
+
+  function toggleOmitAcid() {
+    if (!state.picks) return;
+    if (state.picks.omitAcid) {
+      state.picks.omitAcid = false;
+      restoreRememberedLemon();
+    } else {
+      rememberLemon(state.picks.flavorIds);
+      state.picks.omitAcid = true;
+      state.picks.flavorIds = state.picks.flavorIds.filter((fid) => !CDMotor.isLemonAcid(fid));
+    }
+    reassemble();
+  }
+
   function pickFromCatalog(kind, id) {
     if (!state.session || !state.picks || !id) return;
     const pools = state.session.pools;
     const st = state.session.state;
     if (kind === "bases") {
+      if (state.picks.baseId === id) return;
       const item = CDMotor.catalogBases(st).find((b) => b.id === id);
       if (!item) return;
       if (!pools.bases.some((b) => b.id === id)) pools.bases.push(item);
       state.picks.baseId = id;
+      ensurePoolChip("bases", item);
     } else if (kind === "flavors") {
+      if (state.picks.flavorIds.includes(id)) {
+        toggleFlavorId(id);
+        return;
+      }
       const item = CDMotor.catalogFlavors().find((f) => f.id === id);
       if (!item) return;
       if (!pools.flavors.some((f) => f.id === id)) {
         pools.flavors.push({ id: item.id, label: item.label, group: item.group, role: CDMotor.roleOf(item.id), exotic: false, kind: "catalog" });
       }
-      if (!state.picks.flavorIds.includes(id)) state.picks.flavorIds.push(id);
+      state.picks.flavorIds.push(id);
       if (CDMotor.isLemonAcid(id)) state.picks.omitAcid = false;
+      ensurePoolChip("flavors", pools.flavors.find((f) => f.id === id));
     } else if (kind === "foams") {
+      if (state.picks.foamId === id) return;
       const item = CDMotor.catalogFoams().find((f) => f.id === id);
       if (!item) return;
       if (!pools.foams.some((f) => f.id === id)) pools.foams.push(item);
       state.picks.foamId = id;
+      ensurePoolChip("foams", item);
     } else if (kind === "glasses") {
+      if (state.picks.glassId === id) return;
       const item = CDMotor.catalogGlasses().find((g) => g.id === id);
       if (!item) return;
       if (!pools.glasses.some((g) => g.id === id)) pools.glasses.push(item);
       state.picks.glassId = id;
-    }
+      ensurePoolChip("glasses", item);
+    } else return;
+    syncPoolSelection(kind);
     reassemble();
-    renderResultado();
+  }
+
+  function customAddHtml(kind, placeholder) {
+    return `<form class="custom-add" data-custom="${kind}" autocomplete="off">
+      <label class="sr-only" for="custom-${kind}">${escapeHtml(placeholder)}</label>
+      <input type="text" id="custom-${kind}" placeholder="${escapeHtml(placeholder)}" autocomplete="off" enterkeyhint="done" maxlength="80" />
+      <button type="submit" class="btn btn-ghost btn-sm">Adicionar</button>
+    </form>`;
+  }
+
+  function poolMatchTexts(kind, item) {
+    if (kind === "glasses") return [item.name, item.label].filter(Boolean);
+    if (kind === "flavors") return [item.label, flavorChipText(item)].filter(Boolean);
+    return [item.label].filter(Boolean);
+  }
+
+  function findLabeled(kind, label) {
+    const target = fold(label);
+    const pool = (state.session.pools[kind] || []);
+    const inPool = pool.find((item) => poolMatchTexts(kind, item).some((text) => fold(text) === target));
+    if (inPool) return { source: "pool", id: inPool.id };
+    const inCat = catalogEntries(kind).find((it) => fold(it.label) === target || (it.aliases || []).some((alias) => fold(alias) === target));
+    if (inCat) return { source: "catalog", id: inCat.id };
+    return null;
+  }
+
+  function slugPart(text) {
+    return fold(text).replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "item";
+  }
+
+  function uniqueCustomId(kind, label) {
+    const prefix = { bases: "base", flavors: "flavor", foams: "foam", glasses: "glass" }[kind] || "item";
+    const base = `custom-${prefix}-${slugPart(label)}`;
+    const customs = (state.picks && state.picks.customs) || {};
+    const pools = state.session.pools;
+    const taken = (candidate) => {
+      if (customs[candidate]) return true;
+      return ["bases", "flavors", "foams", "glasses", "lengtheners"].some((key) => (pools[key] || []).some((item) => item.id === candidate));
+    };
+    if (!taken(base)) return base;
+    let n = 2;
+    let id = `${base}-${n}`;
+    while (taken(id)) {
+      n += 1;
+      id = `${base}-${n}`;
+    }
+    return id;
+  }
+
+  function makeCustomPoolItem(kind, id, label) {
+    if (kind === "bases") {
+      const zero = state.alcool === "sem";
+      return {
+        id,
+        label,
+        type: zero ? "zero" : "spirit",
+        category: zero ? "zero" : "custom",
+        role: zero ? "zero" : "base",
+        custom: true,
+      };
+    }
+    if (kind === "flavors") {
+      return { id, label, group: "outros", role: "doce", exotic: false, kind: "custom", custom: true };
+    }
+    if (kind === "foams") return { id, label, custom: true };
+    return { id, name: label, label, ml: 300, why: "Copo livre informado na ficha.", custom: true };
+  }
+
+  function selectPoolId(kind, id) {
+    if (!state.picks || !id) return;
+    if (kind === "bases") state.picks.baseId = id;
+    else if (kind === "flavors") {
+      if (!state.picks.flavorIds.includes(id)) state.picks.flavorIds.push(id);
+      if (CDMotor.isLemonAcid(id)) state.picks.omitAcid = false;
+    } else if (kind === "foams") state.picks.foamId = id;
+    else if (kind === "glasses") state.picks.glassId = id;
+    syncPoolSelection(kind);
+    reassemble();
+  }
+
+  function addCustomItem(kind, raw) {
+    const label = String(raw || "").replace(/\s+/g, " ").trim();
+    if (!label || !state.session || !state.picks) return false;
+    const found = findLabeled(kind, label);
+    if (found && found.source === "pool") {
+      const item = (state.session.pools[kind] || []).find((entry) => entry.id === found.id);
+      ensurePoolChip(kind, item);
+      selectPoolId(kind, found.id);
+      return true;
+    }
+    if (found && found.source === "catalog") {
+      pickFromCatalog(kind, found.id);
+      return true;
+    }
+    const id = uniqueCustomId(kind, label);
+    const item = makeCustomPoolItem(kind, id, label);
+    state.session.pools[kind].push(item);
+    if (!state.picks.customs) state.picks.customs = {};
+    state.picks.customs[id] = {
+      id,
+      kind: kind === "flavors" ? "flavor" : kind === "bases" ? "base" : kind === "foams" ? "foam" : "glass",
+      label,
+      ml: kind === "glasses" ? 300 : undefined,
+    };
+    ensurePoolChip(kind, item);
+    selectPoolId(kind, id);
+    return true;
+  }
+
+  function bindCustomAdds() {
+    document.querySelectorAll(".custom-add").forEach((form) => {
+      form.onsubmit = (ev) => {
+        ev.preventDefault();
+        const input = form.querySelector("input");
+        if (!input) return;
+        if (!String(input.value || "").trim()) return;
+        if (addCustomItem(form.dataset.custom, input.value)) input.value = "";
+      };
+    });
   }
 
   function bindCatalogs() {
@@ -951,6 +1242,7 @@
             ${chipRow(pools.foams, state.picks.foamId, "data-foam", (f) => f.label)}
             <button type="button" class="chip auto-pick ${state.picks.foamId ? "" : "on"}" data-foam="">Sem espuma</button>
           </div>
+          ${customAddHtml("foams", "Digite outra espuma")}
           ${catalogHtml("foams")}
         </section>`;
     const lenItems = pools.lengtheners.slice();
@@ -966,14 +1258,17 @@
         <div class="chip-grid" id="pool-bases">
           ${chipRow(pools.bases, state.picks.baseId, "data-base", (b) => b.label)}
         </div>
+        ${customAddHtml("bases", "Digite outra base")}
         ${catalogHtml("bases")}
       </section>
       <section class="pool">
         <h2>Sabores na ficha</h2>
         <p class="hint">Até 20. Cada sugestão tem pairing com o protagonista. Dá para tirar o limão. O cardápio abre a lista inteira.</p>
         <div class="chip-grid" id="pool-flavors">
+          <button type="button" class="chip auto-pick ${state.picks.omitAcid ? "on" : ""}" id="btn-sem-limao">Sem limão</button>
           ${chipRow(pools.flavors, state.picks.flavorIds, "data-flavor", flavorChipText)}
         </div>
+        ${customAddHtml("flavors", "Digite outro sabor")}
         ${catalogHtml("flavors")}
       </section>
       ${foamBlock}
@@ -981,8 +1276,9 @@
         <h2>Copo</h2>
         <p class="hint">Até 5 da MATRIZ. O primeiro é o sugerido. O cardápio abre os outros copos.</p>
         <div class="chip-grid" id="pool-glasses">
-          ${chipRow(pools.glasses, state.picks.glassId, "data-glass", (g) => `${g.name.replace(/Copo |Taça /g, "")}`)}
+          ${chipRow(pools.glasses, state.picks.glassId, "data-glass", (g) => `${(g.name || g.label || "").replace(/Copo |Taça /g, "")}`)}
         </div>
+        ${customAddHtml("glasses", "Digite outro copo")}
         ${catalogHtml("glasses")}
       </section>
       ${state.forca === "refrescante" ? `<section class="pool">
@@ -998,48 +1294,13 @@
       </div>
     `;
 
-    $("#pool-bases").querySelectorAll("[data-base]").forEach((btn) => {
-      btn.onclick = () => {
-        state.picks.baseId = btn.dataset.base;
-        $("#pool-bases").querySelectorAll("[data-base]").forEach((b) => b.classList.toggle("on", b.dataset.base === state.picks.baseId));
-        reassemble();
-      };
-    });
-    $("#pool-flavors").querySelectorAll("[data-flavor]").forEach((btn) => {
-      btn.onclick = () => {
-        const id = btn.dataset.flavor;
-        const arr = state.picks.flavorIds;
-        const i = arr.indexOf(id);
-        if (i >= 0) {
-          const lemon = CDMotor.isLemonAcid(id);
-          if (arr.length === 1 && !lemon) return;
-          arr.splice(i, 1);
-          if (lemon && !arr.some((fid) => CDMotor.isLemonAcid(fid))) state.picks.omitAcid = true;
-        } else {
-          arr.push(id);
-          if (CDMotor.isLemonAcid(id)) state.picks.omitAcid = false;
-        }
-        btn.classList.toggle("on", arr.includes(id));
-        reassemble();
-      };
-    });
+    $("#pool-bases").querySelectorAll("[data-base]").forEach((btn) => bindPoolChip("bases", btn));
+    $("#pool-flavors").querySelectorAll("[data-flavor]").forEach((btn) => bindPoolChip("flavors", btn));
+    const omitBtn = $("#btn-sem-limao");
+    if (omitBtn) omitBtn.onclick = () => toggleOmitAcid();
     const foamRoot = $("#pool-foams");
-    if (foamRoot) {
-      foamRoot.querySelectorAll("[data-foam]").forEach((btn) => {
-        btn.onclick = () => {
-          state.picks.foamId = btn.dataset.foam || null;
-          foamRoot.querySelectorAll("[data-foam]").forEach((b) => b.classList.toggle("on", (b.dataset.foam || null) === state.picks.foamId || (!b.dataset.foam && !state.picks.foamId)));
-          reassemble();
-        };
-      });
-    }
-    $("#pool-glasses").querySelectorAll("[data-glass]").forEach((btn) => {
-      btn.onclick = () => {
-        state.picks.glassId = btn.dataset.glass;
-        $("#pool-glasses").querySelectorAll("[data-glass]").forEach((b) => b.classList.toggle("on", b.dataset.glass === state.picks.glassId));
-        reassemble();
-      };
-    });
+    if (foamRoot) foamRoot.querySelectorAll("[data-foam]").forEach((btn) => bindPoolChip("foams", btn));
+    $("#pool-glasses").querySelectorAll("[data-glass]").forEach((btn) => bindPoolChip("glasses", btn));
     const lenRoot = $("#pool-length");
     if (lenRoot) {
       lenRoot.querySelectorAll("[data-len]").forEach((btn) => {
@@ -1057,6 +1318,7 @@
     $("#btn-back-build").onclick = () => back();
     bindLiveControls();
     bindCatalogs();
+    bindCustomAdds();
     $("#btn-nova").onclick = () => {
       resetChoices();
       go("home");
