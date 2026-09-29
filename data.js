@@ -1,44 +1,144 @@
-/* Criador de Drinks — dados curados (subset) · Grupo The Bartenders
-   Fontes parafraseadas: Flavor Bible, Liquid Intelligence, carta TB, MATRIZ.
-   Não é dump de listas copyrighted. */
+/* Criador de Drinks — dados · Grupo The Bartenders
+   Sabores: lista mestre (nomes, sem marca). Afinidades só onde já havia
+   heurística de Flavor Bible; o resto fica vazio e o motor usa ponte [BAR].
+   Outras fontes parafraseadas: Liquid Intelligence, carta TB, MATRIZ. */
 window.CDData = (function () {
-  const INGREDIENTS = [
-    { id: "limao", label: "Limão", group: "citrico", volume: "moderate", affinities: ["hortela", "manjericao", "gengibre", "mel", "coco", "pepino", "laranja", "morango"] },
-    { id: "lima", label: "Lima", group: "citrico", volume: "moderate", affinities: ["gengibre", "hortela", "coco", "manga", "chile", "cilantro", "pepino", "abacaxi", "melao"] },
-    { id: "laranja", label: "Laranja", group: "citrico", volume: "moderate", affinities: ["canela", "cafe", "chocolate", "gengibre", "cranberry", "baunilha", "amaro", "ramazzotti", "melao"] },
-    { id: "grapefruit", label: "Grapefruit", group: "citrico", volume: "loud", affinities: ["mel", "hortela", "gengibre", "coco", "abacaxi", "maracuja"] },
-    { id: "morango", label: "Morango", group: "berry", volume: "moderate", affinities: ["limao", "lima", "hortela", "manjericao", "mel", "baunilha"] },
-    { id: "framboesa", label: "Framboesa", group: "berry", volume: "moderate", affinities: ["limao", "hortela", "pessego", "mel", "laranja"] },
-    { id: "amora", label: "Amora", group: "berry", volume: "moderate", affinities: ["lima", "hortela", "limao", "canela", "mel"] },
-    { id: "maca", label: "Maçã", group: "pome", volume: "moderate", affinities: ["canela", "gengibre", "mel", "limao", "cravo"] },
-    { id: "pera", label: "Pêra", group: "pome", volume: "quiet", affinities: ["gengibre", "canela", "mel", "limao", "baunilha"] },
-    { id: "pessego", label: "Pêssego", group: "stone", volume: "moderate", affinities: ["manjericao", "hortela", "limao", "gengibre", "baunilha", "framboesa"] },
-    { id: "melancia", label: "Melancia", group: "fruta", volume: "quiet", affinities: ["lima", "hortela", "manjericao", "pepino", "chile", "gengibre"] },
-    { id: "melao", label: "Melão", group: "fruta", volume: "quiet", affinities: ["lima", "hortela", "manjericao", "pepino", "gengibre", "elderflower", "amaro", "ramazzotti", "laranja"] },
-    { id: "abacaxi", label: "Abacaxi", group: "tropical", volume: "moderate", affinities: ["coco", "lima", "gengibre", "hortela", "chile", "baunilha", "maracuja"] },
-    { id: "manga", label: "Manga", group: "tropical", volume: "moderate", affinities: ["lima", "cilantro", "chile", "coco", "gengibre", "hortela", "maracuja"] },
-    { id: "maracuja", label: "Maracujá", group: "tropical", volume: "loud", affinities: ["coco", "lima", "hortela", "gengibre", "morango", "abacaxi"] },
-    { id: "coco", label: "Coco", group: "tropical", volume: "moderate", affinities: ["abacaxi", "lima", "manga", "maracuja", "gengibre", "chocolate", "cafe"] },
-    { id: "lichia", label: "Lichia", group: "tropical", volume: "moderate", affinities: ["lima", "hortela", "gengibre", "rosa"] },
-    { id: "hortela", label: "Hortelã", group: "erva", volume: "quiet", affinities: ["lima", "limao", "morango", "pepino", "gengibre", "coco", "chocolate", "melao"] },
-    { id: "manjericao", label: "Manjericão", group: "erva", volume: "moderate", affinities: ["limao", "lima", "morango", "pepino", "tomate", "abacaxi"] },
-    { id: "alecrim", label: "Alecrim", group: "erva", volume: "loud", affinities: ["limao", "laranja", "mel", "maca", "grapefruit"] },
-    { id: "cilantro", label: "Cilantro", group: "erva", volume: "moderate", affinities: ["lima", "chile", "manga", "abacaxi", "pepino", "coco"] },
-    { id: "pepino", label: "Pepino", group: "vegetal", volume: "quiet", affinities: ["hortela", "lima", "manjericao", "chile", "gengibre", "cilantro", "melao"] },
-    { id: "tomate", label: "Tomate", group: "vegetal", volume: "moderate", affinities: ["manjericao", "cilantro", "chile", "lima", "pepino"] },
-    { id: "gengibre", label: "Gengibre", group: "especiaria", volume: "loud", affinities: ["lima", "limao", "mel", "hortela", "coco", "pera", "grapefruit"] },
-    { id: "canela", label: "Canela", group: "especiaria", volume: "loud", affinities: ["maca", "chocolate", "cafe", "laranja", "coco", "pera"] },
-    { id: "cardamomo", label: "Cardamomo", group: "especiaria", volume: "loud", affinities: ["cafe", "chocolate", "laranja", "mel", "pera", "gengibre"] },
-    { id: "chile", label: "Chili / Jalapeño", group: "especiaria", volume: "loud", affinities: ["lima", "pepino", "melancia", "abacaxi", "manga", "cilantro", "chocolate"] },
-    { id: "cafe", label: "Café", group: "outros", volume: "loud", affinities: ["chocolate", "canela", "laranja", "coco", "baunilha", "cardamomo"] },
-    { id: "chocolate", label: "Chocolate", group: "outros", volume: "loud", affinities: ["cafe", "laranja", "hortela", "chile", "canela", "coco", "maracuja"] },
-    { id: "lavanda", label: "Lavanda", group: "floral", volume: "loud", affinities: ["limao", "mel", "morango", "baunilha"] },
-    { id: "elderflower", label: "Elderflower", group: "floral", volume: "moderate", affinities: ["limao", "pepino", "hortela", "pera", "framboesa", "melao"] },
-    { id: "amaro", label: "Amaro", group: "bitter", volume: "loud", affinities: ["laranja", "cafe", "chocolate", "limao", "canela", "melao", "gengibre", "ramazzotti"] },
-    { id: "ramazzotti", label: "Ramazzotti", group: "bitter", volume: "loud", affinities: ["laranja", "melao", "limao", "cafe", "chocolate", "canela", "gengibre", "amaro"] },
-    { id: "mel", label: "Mel", group: "doce", volume: "moderate", affinities: ["limao", "gengibre", "alecrim", "lavanda", "maca"] },
-    { id: "baunilha", label: "Baunilha", group: "doce", volume: "quiet", affinities: ["coco", "chocolate", "abacaxi", "pessego", "cafe"] },
+  /** Lista mestre — 220 nomes. A ordem é a da fonte. */
+  const FLAVOR_NAMES = [
+    "Limão", "Limão siciliano", "Limão meyer", "Limão preservado", "Lima", "Folha de limão kaffir",
+    "Laranja", "Laranja blood", "Laranja mandarina", "Toranja", "Yuzu", "Bergamota", "Tangerina",
+    "Morango", "Framboesa", "Amora", "Mirtilo", "Cranberry", "Cereja", "Groselha", "Elderberry",
+    "Maçã", "Pera", "Pêssego", "Nectarina", "Damasco", "Ameixa", "Figo", "Tâmara", "Romã", "Marmelo",
+    "Caqui", "Ruibarbo", "Melancia", "Melão cantaloupe", "Melão honeydew", "Abacaxi", "Manga", "Mamão",
+    "Mamão verde", "Maracujá", "Goiaba", "Lichia", "Banana", "Coco", "Água de coco", "Tamarindo", "Kiwi",
+    "Carambola", "Hortelã", "Hortelã-pimenta", "Manjericão", "Manjericão tailandês", "Alecrim", "Tomilho",
+    "Tomilho-limão", "Coentro", "Salsa", "Endro", "Estragão", "Sálvia", "Orégano", "Orégano mexicano",
+    "Manjerona", "Cebolinha", "Shiso", "Capim-limão", "Verbena-limão", "Hissopo de anis", "Louro", "Lavanda",
+    "Gengibre", "Canela", "Cardamomo", "Cravo", "Noz-moscada", "Allspice", "Anis-estrelado", "Baunilha",
+    "Açafrão", "Cúrcuma", "Cominho", "Coentro semente", "Funcho semente", "Pimenta-do-reino", "Pimenta branca",
+    "Pimenta sichuan", "Pimenta espelette", "Páprica defumada", "Anis", "Fenugreek", "Sumac", "Galanga",
+    "Chile jalapeño", "Chile serrano", "Chile thai", "Chile habanero", "Chile chipotle", "Chile ancho",
+    "Chile guajillo", "Chile poblano", "Flocos de chili", "Wasabi", "Raiz-forte", "Pepino", "Tomate", "Aipo",
+    "Sal de aipo", "Beterraba", "Funcho", "Abacate", "Azeitona", "Alcaparra", "Cenoura", "Milho", "Abóbora",
+    "Aspargo", "Alcachofra", "Rabanete", "Jícama", "Café", "Espresso", "Chocolate", "Cacau", "Cacau nibs",
+    "Chocolate branco", "Matcha", "Chá preto", "Chá verde", "Hibisco", "Mel", "Maple", "Agave", "Melaço",
+    "Açúcar mascavo", "Açúcar de coco", "Açúcar de palma", "Melado de romã", "Amêndoa", "Avelã", "Noz", "Pecã",
+    "Pistache", "Castanha de caju", "Macadâmia", "Gergelim", "Tahine", "Flor de sabugueiro", "Água de rosas",
+    "Jasmim", "Flor de laranjeira", "Violeta", "Rosa", "Vinagre balsâmico", "Vinagre de maçã",
+    "Vinagre de champagne", "Verjus", "Umeboshi", "Shoyu", "Miso", "Fumaça", "Sal marinho", "Junípero",
+    "Pandan", "Alcaçuz", "Pólen de funcho", "Uva", "Passas", "Damasco seco", "Figo seco", "Cereja seca",
+    "Cranberry seco", "Pêssego branco", "Maçã verde", "Gengibre cristalizado", "Canela em pau", "Café frio",
+    "Chocolate amargo", "Mel de laranjeira", "Creme de coco", "Leite de coco", "Leite de amêndoa",
+    "Toranja rosa", "Lima key", "Manga verde", "Pimenta rosa", "Cardamomo verde", "Manjericão roxo",
+    "Erva-cidreira", "Camomila", "Vinagre de arroz", "Néctar de coco", "Tomate seco", "Água de tomate",
+    "Suco de aipo", "Suco de beterraba", "Casca de laranja", "Casca de limão", "Flor de hibisco", "Mostarda",
+    "Açaí", "Cupuaçu", "Cumaru", "Pitaya", "Jabuticaba", "Timur berry", "Curaçao blue", "Amaretto",
+    "Gum nero", "Falernum", "Grenadine", "Bubble gum", "Algodão doce", "Caramelo", "Curry", "Caldo de cana",
+    "Tajín", "Frutas vermelhas", "Chá branco", "Bitter artesanal",
   ];
+
+  const SABOR_GROUPS = [
+    { id: "citrico", label: "Cítricos" },
+    { id: "berry", label: "Berries" },
+    { id: "tropical", label: "Tropicais" },
+    { id: "fruta", label: "Frutas" },
+    { id: "erva", label: "Ervas" },
+    { id: "especiaria", label: "Especiarias" },
+    { id: "floral", label: "Florais" },
+    { id: "cafe", label: "Café / chocolate" },
+    { id: "doce", label: "Doces" },
+    { id: "noz", label: "Nozes" },
+    { id: "vegetal", label: "Vegetais" },
+    { id: "casa", label: "TB / casa" },
+    { id: "outros", label: "Outros" },
+  ];
+
+  function foldLabel(s) {
+    return String(s || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase();
+  }
+
+  function flavorSlug(label) {
+    return foldLabel(label)
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "");
+  }
+
+  /** Grupo simples pelo nome. A ordem das regras evita o conflito óbvio (flor vs cítrico, semente vs erva). */
+  function inferFlavorGroup(label) {
+    const s = foldLabel(label);
+    if (/^(curacao blue|amaretto|gum nero|falernum|grenadine|bubble gum|algodao doce|tajin|bitter artesanal)$/.test(s)) return "casa";
+    if (s === "rosa" || s === "agua de rosas" || /flor de|lavanda|jasmim|violeta|camomila|hibisco|polen/.test(s)) return "floral";
+    if (/cafe|espresso|chocolate|cacau|matcha|^cha\b/.test(s)) return "cafe";
+    if (/semente/.test(s)) return "especiaria";
+    if (/hortela|manjericao|alecrim|tomilho|coentro|salsa|endro|estragao|salvia|oregano|manjerona|cebolinha|shiso|capim-limao|verbena-limao|hissopo|louro|erva-cidreira|pandan/.test(s)) return "erva";
+    if (/noz-moscada|gengibre|canela|cardamomo|cravo|allspice|anis|acafrao|curcuma|cominho|pimenta|paprica|fenugreek|sumac|galanga|chile|chili|wasabi|raiz-forte|mostarda|cumaru|curry|junipero/.test(s)) return "especiaria";
+    if (/^mel$|mel de|maple|agave|melaco|acucar|melado|alcacuz|caramelo|nectar de|baunilha/.test(s)) return "doce";
+    if (/limao|lima|laranja|toranja|yuzu|bergamota|tangerina|kaffir/.test(s)) return "citrico";
+    if (/morango|framboesa|amora|mirtilo|cranberry|cereja|groselha|elderberry|berry|frutas vermelhas/.test(s)) return "berry";
+    if (/abacaxi|manga|mamao|maracuja|goiaba|lichia|banana|coco|tamarindo|kiwi|carambola|melancia|melao|pitaya|cupuacu|jabuticaba|acai|caldo de cana/.test(s)) return "tropical";
+    if (/amendoa|avela|^noz$|peca|pistache|caju|macadamia|gergelim|tahine/.test(s)) return "noz";
+    if (/vinagre|verjus|umeboshi|shoyu|miso|fumaca|sal marinho/.test(s)) return "outros";
+    if (/maca|pera|pessego|nectarina|damasco|ameixa|figo|tamara|roma|marmelo|caqui|ruibarbo|^uva$|passas/.test(s)) return "fruta";
+    if (/pepino|tomate|aipo|beterraba|^funcho$|abacate|azeitona|alcaparra|cenoura|milho|abobora|aspargo|alcachofra|rabanete|jicama/.test(s)) return "vegetal";
+    return "outros";
+  }
+
+  /**
+   * Afinidades já curadas (Flavor Bible parafraseado), remapeadas para os ids da lista mestre.
+   * Grapefruit → toranja, cilantro → coentro, chile → chile-jalapeno,
+   * elderflower → flor-de-sabugueiro, melão → melão cantaloupe.
+   * Amaro e Ramazzotti saíram da lista (não estão na fonte); as arestas deles caem fora.
+   */
+  const CURATED = {
+    limao: { volume: "moderate", affinities: ["hortela", "manjericao", "gengibre", "mel", "coco", "pepino", "laranja", "morango"] },
+    lima: { volume: "moderate", affinities: ["gengibre", "hortela", "coco", "manga", "chile-jalapeno", "coentro", "pepino", "abacaxi", "melao-cantaloupe"] },
+    laranja: { volume: "moderate", affinities: ["canela", "cafe", "chocolate", "gengibre", "cranberry", "baunilha", "melao-cantaloupe"] },
+    toranja: { volume: "loud", affinities: ["mel", "hortela", "gengibre", "coco", "abacaxi", "maracuja"] },
+    morango: { volume: "moderate", affinities: ["limao", "lima", "hortela", "manjericao", "mel", "baunilha"] },
+    framboesa: { volume: "moderate", affinities: ["limao", "hortela", "pessego", "mel", "laranja"] },
+    amora: { volume: "moderate", affinities: ["lima", "hortela", "limao", "canela", "mel"] },
+    maca: { volume: "moderate", affinities: ["canela", "gengibre", "mel", "limao", "cravo"] },
+    pera: { volume: "quiet", affinities: ["gengibre", "canela", "mel", "limao", "baunilha"] },
+    pessego: { volume: "moderate", affinities: ["manjericao", "hortela", "limao", "gengibre", "baunilha", "framboesa"] },
+    melancia: { volume: "quiet", affinities: ["lima", "hortela", "manjericao", "pepino", "chile-jalapeno", "gengibre"] },
+    "melao-cantaloupe": { volume: "quiet", affinities: ["lima", "hortela", "manjericao", "pepino", "gengibre", "flor-de-sabugueiro", "laranja"] },
+    abacaxi: { volume: "moderate", affinities: ["coco", "lima", "gengibre", "hortela", "chile-jalapeno", "baunilha", "maracuja"] },
+    manga: { volume: "moderate", affinities: ["lima", "coentro", "chile-jalapeno", "coco", "gengibre", "hortela", "maracuja"] },
+    maracuja: { volume: "loud", affinities: ["coco", "lima", "hortela", "gengibre", "morango", "abacaxi"] },
+    coco: { volume: "moderate", affinities: ["abacaxi", "lima", "manga", "maracuja", "gengibre", "chocolate", "cafe"] },
+    lichia: { volume: "moderate", affinities: ["lima", "hortela", "gengibre", "rosa"] },
+    hortela: { volume: "quiet", affinities: ["lima", "limao", "morango", "pepino", "gengibre", "coco", "chocolate", "melao-cantaloupe"] },
+    manjericao: { volume: "moderate", affinities: ["limao", "lima", "morango", "pepino", "tomate", "abacaxi"] },
+    alecrim: { volume: "loud", affinities: ["limao", "laranja", "mel", "maca", "toranja"] },
+    coentro: { volume: "moderate", affinities: ["lima", "chile-jalapeno", "manga", "abacaxi", "pepino", "coco"] },
+    pepino: { volume: "quiet", affinities: ["hortela", "lima", "manjericao", "chile-jalapeno", "gengibre", "coentro", "melao-cantaloupe"] },
+    tomate: { volume: "moderate", affinities: ["manjericao", "coentro", "chile-jalapeno", "lima", "pepino"] },
+    gengibre: { volume: "loud", affinities: ["lima", "limao", "mel", "hortela", "coco", "pera", "toranja"] },
+    canela: { volume: "loud", affinities: ["maca", "chocolate", "cafe", "laranja", "coco", "pera"] },
+    cardamomo: { volume: "loud", affinities: ["cafe", "chocolate", "laranja", "mel", "pera", "gengibre"] },
+    "chile-jalapeno": { volume: "loud", affinities: ["lima", "pepino", "melancia", "abacaxi", "manga", "coentro", "chocolate"] },
+    cafe: { volume: "loud", affinities: ["chocolate", "canela", "laranja", "coco", "baunilha", "cardamomo"] },
+    chocolate: { volume: "loud", affinities: ["cafe", "laranja", "hortela", "chile-jalapeno", "canela", "coco", "maracuja"] },
+    lavanda: { volume: "loud", affinities: ["limao", "mel", "morango", "baunilha"] },
+    "flor-de-sabugueiro": { volume: "moderate", affinities: ["limao", "pepino", "hortela", "pera", "framboesa", "melao-cantaloupe"] },
+    mel: { volume: "moderate", affinities: ["limao", "gengibre", "alecrim", "lavanda", "maca"] },
+    baunilha: { volume: "quiet", affinities: ["coco", "chocolate", "abacaxi", "pessego", "cafe"] },
+  };
+
+  const INGREDIENTS = FLAVOR_NAMES.map((label) => {
+    const id = flavorSlug(label);
+    const curated = CURATED[id] || {};
+    return {
+      id,
+      label,
+      group: inferFlavorGroup(label),
+      volume: curated.volume || "moderate",
+      affinities: (curated.affinities || []).slice(),
+    };
+  });
 
   const PROFILES = [
     { id: "doce", label: "Doce" },
@@ -167,16 +267,16 @@ window.CDData = (function () {
 
   /** Heurística §3.3 — protagonista/perfil → família. weight < 1 é default leve, sem regra de casa. */
   const SPIRIT_HEURISTICS = [
-    { spirits: ["gin"], tags: ["herbal", "floral", "pepino", "limao", "lima", "manjericao", "elderflower", "lavanda", "alecrim", "melao"] },
+    { spirits: ["gin"], tags: ["herbal", "floral", "pepino", "limao", "lima", "manjericao", "elderflower", "flor-de-sabugueiro", "lavanda", "alecrim", "melao", "melao-cantaloupe", "melao-honeydew"] },
     { spirits: ["rum"], tags: ["abacaxi", "coco", "manga", "baunilha", "banana", "tropical"] },
     { spirits: ["cachaca"], tags: ["limao", "maracuja", "abacaxi", "manga", "gengibre", "hortela"] },
-    { spirits: ["vodka"], tags: ["morango", "framboesa", "amora", "melancia", "melao", "pepino", "cafe", "equilibrado", "frutado"] },
+    { spirits: ["vodka"], tags: ["morango", "framboesa", "amora", "melancia", "melao", "melao-cantaloupe", "melao-honeydew", "pepino", "cafe", "equilibrado", "frutado"] },
     { spirits: ["whiskey"], tags: ["amadeirado", "cafe", "chocolate", "maca", "pera", "canela", "amargo", "pessego", "amaro", "ramazzotti"] },
-    { spirits: ["tequila"], tags: ["picante", "chile", "cilantro", "manga", "melancia", "lima", "abacaxi", "tomate"] },
+    { spirits: ["tequila"], tags: ["picante", "chile", "chile-jalapeno", "chile-serrano", "chile-thai", "chile-habanero", "chile-chipotle", "chile-ancho", "chile-guajillo", "chile-poblano", "flocos-de-chili", "cilantro", "coentro", "manga", "melancia", "lima", "abacaxi", "tomate"] },
     { spirits: ["espumante"], tags: ["floral", "frutado", "refrescante", "morango", "pessego", "framboesa"], weight: 0.5 },
     { spirits: ["pisco"], tags: ["citrico", "limao", "lima", "floral"], weight: 0.5 },
     { spirits: ["saque"], tags: ["pera", "pessego", "lichia", "floral", "pepino"], weight: 0.5 },
-    { spirits: ["soju"], tags: ["frutado", "refrescante", "melancia", "melao", "morango"], weight: 0.5 },
+    { spirits: ["soju"], tags: ["frutado", "refrescante", "melancia", "melao", "melao-cantaloupe", "melao-honeydew", "morango"], weight: 0.5 },
     { spirits: ["conhaque", "brandy"], tags: ["amadeirado", "maca", "pera", "cafe", "chocolate", "canela"], weight: 0.5 },
     { spirits: ["vinho"], tags: ["frutado", "floral", "refrescante", "morango", "pessego"], weight: 0.5 },
     { spirits: ["steinhager"], tags: ["herbal", "limao", "alecrim"], weight: 0.5 },
@@ -205,6 +305,7 @@ window.CDData = (function () {
     lima: { juice: "Suco de lima", syrup: null, garnish: "Rodela de lima" },
     laranja: { juice: "Suco de laranja", syrup: null, garnish: "Zest de laranja" },
     grapefruit: { juice: "Suco de grapefruit", syrup: "Xarope de grapefruit", garnish: "Twist de grapefruit" },
+    toranja: { juice: "Suco de toranja", syrup: "Xarope de toranja", garnish: "Twist de toranja" },
     morango: { juice: "Purê de morango", syrup: "Xarope de morango", garnish: "Morango fresco" },
     framboesa: { juice: "Purê de framboesa", syrup: "Xarope de framboesa", garnish: "Framboesa" },
     amora: { juice: "Purê de amora", syrup: "Xarope de amora", garnish: "Amora" },
@@ -213,6 +314,8 @@ window.CDData = (function () {
     pessego: { juice: "Purê de pêssego", syrup: "Xarope de pêssego", garnish: "Fatia de pêssego" },
     melancia: { juice: "Suco de melancia", syrup: null, garnish: "Cubo de melancia" },
     melao: { juice: "Purê / suco de melão", syrup: "Xarope de melão", garnish: "Cubo de melão" },
+    "melao-cantaloupe": { juice: "Purê / suco de melão", syrup: "Xarope de melão", garnish: "Cubo de melão" },
+    "melao-honeydew": { juice: "Purê / suco de melão", syrup: "Xarope de melão", garnish: "Cubo de melão" },
     amaro: { juice: null, syrup: null, garnish: "Zest de laranja" },
     ramazzotti: { juice: null, syrup: null, garnish: "Zest de laranja / twist" },
     abacaxi: { juice: "Suco de abacaxi", syrup: null, garnish: "Triângulo de abacaxi" },
@@ -224,16 +327,19 @@ window.CDData = (function () {
     manjericao: { juice: null, syrup: null, garnish: "Folhas de manjericão" },
     alecrim: { juice: null, syrup: "Xarope de alecrim", garnish: "Sprig de alecrim" },
     cilantro: { juice: null, syrup: null, garnish: "Folhas de cilantro" },
+    coentro: { juice: null, syrup: null, garnish: "Folhas de coentro" },
     pepino: { juice: "Suco de pepino", syrup: null, garnish: "Fita de pepino" },
     tomate: { juice: "Suco de tomate", syrup: null, garnish: "Cherry tomato" },
     gengibre: { juice: null, syrup: "Xarope de gengibre", garnish: "Chips de gengibre" },
     canela: { juice: null, syrup: "Xarope de canela", garnish: "Canela em rama" },
     cardamomo: { juice: null, syrup: "Xarope de cardamomo", garnish: "Vagem de cardamomo" },
     chile: { juice: null, syrup: "Xarope de chili", garnish: "Rodela de jalapeño" },
+    "chile-jalapeno": { juice: null, syrup: "Xarope de chili", garnish: "Rodela de jalapeño" },
     cafe: { juice: "Espresso", syrup: "Xarope de café", garnish: "Grãos de café" },
     chocolate: { juice: null, syrup: "Xarope de chocolate", garnish: "Raspagem de chocolate" },
     lavanda: { juice: null, syrup: "Xarope de lavanda", garnish: "Flor de lavanda" },
     elderflower: { juice: null, syrup: "Cordial de elderflower", garnish: "Flor / zest" },
+    "flor-de-sabugueiro": { juice: null, syrup: "Cordial de flor de sabugueiro", garnish: "Flor de sabugueiro" },
     mel: { juice: null, syrup: "Mel diluído (1:1)", garnish: null },
     baunilha: { juice: null, syrup: "Xarope de baunilha", garnish: null },
   };
@@ -275,11 +381,13 @@ window.CDData = (function () {
 
   function getAffinities(id) {
     const ing = getIngredient(id);
-    return ing ? ing.affinities.slice() : [];
+    return ing && ing.affinities ? ing.affinities.slice() : [];
   }
 
   return {
+    FLAVOR_NAMES,
     INGREDIENTS,
+    SABOR_GROUPS,
     PROFILES,
     SPIRITS,
     SPIRIT_HEURISTICS,

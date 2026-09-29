@@ -140,7 +140,7 @@ window.CDMotor = (function () {
       if (p === "frutado" || p === "floral") scores.vinho += 1;
       if (p === "herbal") scores.steinhager += 1;
     });
-    if ((state.sabores || []).includes("melao")) {
+    if ((state.sabores || []).some(isMelao)) {
       scores.vodka += 2;
       scores.gin += 1;
     }
@@ -165,13 +165,48 @@ window.CDMotor = (function () {
     return best;
   }
 
+  function isMelao(id) {
+    return id === "melao" || id === "melao-cantaloupe" || id === "melao-honeydew";
+  }
+
+  function isBitterFlavor(id) {
+    return id === "amaro" || id === "ramazzotti" || id === "bitter-artesanal";
+  }
+
+  function isChile(id) {
+    return id === "chile" || /^chile-/.test(id || "") || id === "flocos-de-chili";
+  }
+
+  function isCitrusId(id) {
+    return ["limao", "lima", "laranja", "grapefruit", "toranja"].includes(id) || D().getIngredient(id)?.group === "citrico";
+  }
+
+  /** Ponte leve já usada no motor quando o livro não fecha o acorde. */
+  const BAR_BRIDGE = ["limao", "lima", "hortela", "gengibre"];
+
   function pickZeroBase(state) {
     const lead = state.sabores[0];
-    if (["manjericao", "hortela", "alecrim", "pepino"].includes(lead)) return D().ZERO_BASES.find((z) => z.id === "tisana");
-    if (["morango", "framboesa", "amora", "melancia", "melao"].includes(lead)) return D().ZERO_BASES.find((z) => z.id === "cha-hibisco");
-    if (["limao", "lima", "grapefruit", "maracuja"].includes(lead)) return D().ZERO_BASES.find((z) => z.id === "shrub");
-    if (["cafe", "chocolate", "canela", "amaro", "ramazzotti"].includes(lead)) return D().ZERO_BASES.find((z) => z.id === "blend-zero");
+    const leadGroup = D().getIngredient(lead)?.group;
+    if (["manjericao", "hortela", "alecrim", "pepino"].includes(lead) || leadGroup === "erva") return D().ZERO_BASES.find((z) => z.id === "tisana");
+    if (["morango", "framboesa", "amora", "melancia", "melao"].includes(lead) || isMelao(lead) || leadGroup === "berry") return D().ZERO_BASES.find((z) => z.id === "cha-hibisco");
+    if (["limao", "lima", "grapefruit", "toranja", "maracuja"].includes(lead) || leadGroup === "citrico") return D().ZERO_BASES.find((z) => z.id === "shrub");
+    if (["cafe", "chocolate", "canela", "amaro", "ramazzotti"].includes(lead) || leadGroup === "cafe" || isBitterFlavor(lead)) return D().ZERO_BASES.find((z) => z.id === "blend-zero");
     return D().ZERO_BASES.find((z) => z.id === "cha-verde") || D().ZERO_BASES[0];
+  }
+
+  /** Sem afinidade de livro: mantém os sabores escolhidos e completa com a ponte [BAR]. */
+  function expandBarDefaults(lead, secondary) {
+    const chord = [lead];
+    (secondary || []).forEach((s) => {
+      if (chord.length >= 3) return;
+      if (s && !chord.includes(s) && D().getIngredient(s)) chord.push(s);
+    });
+    BAR_BRIDGE.forEach((id) => {
+      if (chord.length >= 3) return;
+      if (!chord.includes(id) && D().getIngredient(id)) chord.push(id);
+    });
+    const bridge = BAR_BRIDGE.find((id) => !chord.includes(id) && D().getIngredient(id)) || "limao";
+    return { lead, chord, bridge, secondary, affinities: [], barDefault: true };
   }
 
   /** §4 Expandir sabores → acorde + ponte */
@@ -187,6 +222,7 @@ window.CDMotor = (function () {
         if (!candidates.includes(x) && D().getIngredient(x) && x !== lead) candidates.push(x);
       });
     });
+    if (!candidates.length) return expandBarDefaults(lead, secondary);
     // align to profile
     const perfil = state.perfil || [];
     const scored = candidates.map((id) => {
@@ -195,14 +231,14 @@ window.CDMotor = (function () {
       if (perfil.includes("citrico") && ing.group === "citrico") sc += 3;
       if (perfil.includes("herbal") && ing.group === "erva") sc += 3;
       if (perfil.includes("floral") && ing.group === "floral") sc += 3;
-      if (perfil.includes("picante") && (id === "chile" || id === "gengibre")) sc += 3;
+      if (perfil.includes("picante") && (isChile(id) || id === "gengibre")) sc += 3;
       if (perfil.includes("frutado") && ["berry", "tropical", "stone", "fruta", "pome"].includes(ing.group)) sc += 2;
       if (perfil.includes("doce") && (ing.group === "doce" || id === "coco" || id === "baunilha")) sc += 2;
       if (perfil.includes("amadeirado") && ["canela", "cafe", "chocolate", "maca"].includes(id)) sc += 2;
       if (perfil.includes("refrescante") && ["hortela", "pepino", "lima", "gengibre"].includes(id)) sc += 2;
-      if (perfil.includes("amargo") && (["grapefruit", "cafe", "laranja", "amaro", "ramazzotti"].includes(id) || ing.group === "bitter")) sc += 3;
-      if (perfil.includes("refrescante") && id === "melao") sc += 2;
-      if (perfil.includes("frutado") && id === "melao") sc += 2;
+      if (perfil.includes("amargo") && (["grapefruit", "toranja", "cafe", "laranja"].includes(id) || isBitterFlavor(id) || ing.group === "bitter")) sc += 3;
+      if (perfil.includes("refrescante") && isMelao(id)) sc += 2;
+      if (perfil.includes("frutado") && isMelao(id)) sc += 2;
       if (secondary.includes(id)) sc += 4;
       // volume: penalize multiple loud
       if (ing.volume === "loud") sc -= 0.5;
@@ -228,7 +264,7 @@ window.CDMotor = (function () {
       bridge = a1.find((x) => a2.includes(x) && !chord.includes(x)) || null;
     }
     if (!bridge) {
-      bridge = ["lima", "limao", "gengibre", "hortela"].find((x) => !chord.includes(x)) || "lima";
+      bridge = BAR_BRIDGE.find((x) => !chord.includes(x)) || "lima";
     }
     if (chord.length < 3) {
       for (const c of scored) {
@@ -238,7 +274,7 @@ window.CDMotor = (function () {
         }
       }
     }
-    return { lead, chord, bridge, secondary, affinities: scored.slice(0, 8).map((s) => s.id) };
+    return { lead, chord, bridge, secondary, affinities: scored.slice(0, 8).map((s) => s.id), barDefault: false };
   }
 
   /** Live complementos for UI */
@@ -259,18 +295,27 @@ window.CDMotor = (function () {
         }
       });
     });
+    if (!out.length) {
+      BAR_BRIDGE.forEach((id) => {
+        if (!sabores.includes(id) && D().getIngredient(id)) {
+          out.push({ id, label: D().getIngredient(id).label, source: "BAR" });
+        }
+      });
+    }
     return out.slice(0, 10);
   }
 
 
   function isBitterLead(flavors, state) {
     const ids = [flavors.lead, ...(flavors.secondary || []), ...(state.sabores || [])];
-    return ids.some((id) => id === "amaro" || id === "ramazzotti");
+    return ids.some(isBitterFlavor);
   }
 
   function bitterLabel(state, flavors) {
-    if ((state.sabores || []).includes("ramazzotti") || flavors.lead === "ramazzotti") return "Ramazzotti";
-    if ((state.sabores || []).includes("amaro") || flavors.lead === "amaro") return "Amaro italiano";
+    const ids = [...(state.sabores || []), flavors.lead];
+    if (ids.includes("ramazzotti")) return "Ramazzotti";
+    if (ids.includes("amaro")) return "Amaro italiano";
+    if (ids.includes("bitter-artesanal")) return "Bitter artesanal";
     return "Campari / amaro";
   }
 
@@ -309,7 +354,7 @@ window.CDMotor = (function () {
     }
     // Melão + amaro/Ramazzotti: aperitivo long / spritz / spirit-forward
     if (bitter) {
-      if (p.includes("refrescante") || lead === "melao" || fruitLead) return "spritz";
+      if (p.includes("refrescante") || isMelao(lead) || fruitLead) return "spritz";
       if (p.includes("amadeirado") || whiskeyLike) return "build";
       if (p.includes("amargo") || leadIng?.group === "bitter") return "spirit-forward";
       return "spritz";
@@ -321,7 +366,7 @@ window.CDMotor = (function () {
     if (p.includes("refrescante") && !p.includes("picante")) {
       if (lead === "gengibre" || flavors.chord.includes("gengibre")) return "mule";
       if (ginLike && (p.includes("herbal") || p.includes("floral"))) return "gin-tonic";
-      if (lead === "melao") return "long";
+      if (isMelao(lead)) return "long";
       if (cat === "saque" || cat === "soju") return "long";
       return "long";
     }
@@ -438,8 +483,35 @@ window.CDMotor = (function () {
 
   function liquidName(id, kind) {
     const m = D().LIQUID_MAP[id];
-    if (!m) return null;
-    return m[kind] || null;
+    if (m) return m[kind] || null;
+    return barLiquid(id, kind);
+  }
+
+  /** Forma genérica para sabor sem ficha líquida. Não cria pairing. */
+  function barLiquid(id, kind) {
+    const ing = D().getIngredient(id);
+    if (!ing) return null;
+    const label = ing.label.toLowerCase();
+    const g = ing.group;
+    if (kind === "juice") {
+      if (g === "citrico" || g === "vegetal") return `Suco de ${label}`;
+      if (g === "berry" || g === "tropical" || g === "fruta") return `Purê de ${label}`;
+      return null;
+    }
+    if (kind === "syrup") {
+      if (id === "bitter-artesanal") return null;
+      if (g === "casa") return ing.label;
+      if (g === "especiaria" || g === "doce" || g === "floral" || g === "cafe" || g === "noz" || g === "outros") {
+        return `Xarope de ${label}`;
+      }
+      return null;
+    }
+    if (kind === "garnish") {
+      if (g === "citrico") return `Zest de ${label}`;
+      if (g === "erva" || g === "floral" || g === "berry" || g === "tropical" || g === "fruta") return ing.label;
+      return null;
+    }
+    return null;
   }
 
   function ingredientLabel(id) {
@@ -503,7 +575,8 @@ window.CDMotor = (function () {
 
     // acid
     const acidSource =
-      flavors.chord.find((id) => ["limao", "lima", "grapefruit", "laranja"].includes(id)) ||
+      flavors.chord.find((id) => ["limao", "lima", "toranja", "grapefruit", "laranja"].includes(id)) ||
+      flavors.chord.find((id) => D().getIngredient(id)?.group === "citrico") ||
       (state.perfil.includes("citrico") ? "limao" : null) ||
       (["sour", "daisy", "mocktail-up", "long", "mule", "collins"].includes(family) ? (flavors.lead === "lima" || flavors.chord.includes("lima") ? "lima" : "limao") : null);
 
@@ -521,10 +594,13 @@ window.CDMotor = (function () {
       doceLeft = Math.max(0, Math.round(doceLeft * 0.4));
     }
 
-    if (leadJuice && !["limao", "lima", "laranja", "grapefruit"].includes(lead)) {
+    const leadIsCitrus = D().getIngredient(lead)?.group === "citrico";
+    if (leadJuice && !leadIsCitrus) {
       const fruitMl = family === "sour" || family === "mocktail-up" ? 20 : 25;
       items.push({ nome: leadJuice, qtd: fruitMl, unidade: "ml", role: "fruta" });
-      if (["manga", "melancia", "melao", "abacaxi", "pessego", "morango"].includes(lead)) doceLeft = Math.max(8, doceLeft - 5);
+      if (["manga", "melancia", "melao", "melao-cantaloupe", "melao-honeydew", "abacaxi", "pessego", "morango"].includes(lead)) {
+        doceLeft = Math.max(8, doceLeft - 5);
+      }
     }
 
     // bridge / chord syrup or herb
@@ -600,7 +676,10 @@ window.CDMotor = (function () {
     }
 
     // herbs as muddle / slap
-    const herb = flavors.chord.find((id) => ["hortela", "manjericao", "cilantro", "alecrim"].includes(id));
+    const herb = flavors.chord.find((id) => {
+      const g = D().getIngredient(id)?.group;
+      return g === "erva" || ["hortela", "manjericao", "cilantro", "coentro", "alecrim"].includes(id);
+    });
     if (herb && family !== "spirit-forward") {
       items.push({
         nome: `${ingredientLabel(herb)} (folhas)`,
@@ -611,14 +690,14 @@ window.CDMotor = (function () {
     }
 
     // chili sub-limiar
-    if (state.perfil.includes("picante") || flavors.chord.includes("chile")) {
+    if (state.perfil.includes("picante") || (flavors.chord || []).some(isChile)) {
       if (!items.find((i) => /chili|jalapeño/i.test(i.nome))) {
         items.push({ nome: "Xarope de chili (sub-limiar)", qtd: 5, unidade: "ml", role: "picante" });
       }
     }
 
     // sal sub-limiar LI/TB
-    if (["cafe", "chocolate", "morango", "tomate", "melancia", "melao", "abacaxi"].includes(lead) || state.perfil.includes("frutado")) {
+    if (["cafe", "chocolate", "morango", "tomate", "melancia", "melao", "melao-cantaloupe", "melao-honeydew", "abacaxi"].includes(lead) || state.perfil.includes("frutado")) {
       items.push({ nome: "Solução salina 20%", qtd: 2, unidade: "gotas", role: "sal" });
     }
 
@@ -664,7 +743,9 @@ window.CDMotor = (function () {
     const parts = [];
     parts.push({
       title: "Pairing",
-      text: `Protagonista ${ingredientLabel(flavors.lead)}; acorde ${flavors.chord.map(ingredientLabel).join(" + ")}; ponte ${ingredientLabel(flavors.bridge)}. [LIVRO] afinidades · [BAR] base.`,
+      text: flavors.barDefault
+        ? `Protagonista ${ingredientLabel(flavors.lead)}; acorde ${flavors.chord.map(ingredientLabel).join(" + ")}; ponte ${ingredientLabel(flavors.bridge)}. Sem afinidade de livro para este sabor — ponte leve (limão, lima, hortelã, gengibre). [BAR]`
+        : `Protagonista ${ingredientLabel(flavors.lead)}; acorde ${flavors.chord.map(ingredientLabel).join(" + ")}; ponte ${ingredientLabel(flavors.bridge)}. [LIVRO] afinidades · [BAR] base.`,
     });
     if (base.suggested && base.type === "spirit") {
       parts.push({

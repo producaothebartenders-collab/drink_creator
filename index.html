@@ -57,8 +57,15 @@
     <!-- 2 Sabores -->
     <section class="screen" id="screen-sabores">
       <h1 class="screen-title">Sabores</h1>
-      <p class="screen-sub">Escolha 1 a 3 ingredientes. O primeiro é o protagonista do acorde.</p>
-      <div class="chip-grid" id="sabor-chips"></div>
+      <p class="screen-sub">Escolha 1 a 3. O primeiro é o protagonista do acorde.</p>
+      <div class="spirit-tools">
+        <div class="sabor-picked" id="sabor-picked"></div>
+        <label class="sr-only" for="sabor-search">Buscar sabor</label>
+        <input type="search" id="sabor-search" placeholder="Buscar sabor (ex.: açaí, cumaru, hortelã)" autocomplete="off" enterkeyhint="search" />
+        <div class="cat-scroll" id="sabor-cats" role="tablist" aria-label="Grupos de sabor"></div>
+      </div>
+      <p class="hint" id="sabor-count"></p>
+      <div id="sabor-groups"></div>
       <div class="complements" id="complements"></div>
     </section>
 

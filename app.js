@@ -18,6 +18,8 @@
     destiladoAuto: true,
     spiritQuery: "",
     spiritCat: "todas",
+    saborQuery: "",
+    saborCat: "todas",
     sabores: [],
     perfil: [],
     forca: "equilibrado",
@@ -131,6 +133,8 @@
     state.destiladoAuto = true;
     state.spiritQuery = "";
     state.spiritCat = "todas";
+    state.saborQuery = "";
+    state.saborCat = "todas";
     state.sabores = [];
     state.perfil = [];
     state.forca = "equilibrado";
@@ -409,25 +413,133 @@
   }
 
   function renderSabores() {
-    const grid = $("#sabor-chips");
-    grid.innerHTML = CDData.INGREDIENTS.map((ing) => {
-      const on = state.sabores.includes(ing.id);
-      return `<button type="button" class="chip ${on ? "on" : ""}" data-s="${ing.id}">${escapeHtml(ing.label)}</button>`;
-    }).join("");
-    grid.querySelectorAll("[data-s]").forEach((btn) => {
-      btn.onclick = () => toggleSabor(btn.dataset.s);
-    });
+    const groups = CDData.SABOR_GROUPS || [];
+    const picked = $("#sabor-picked");
+    if (picked) {
+      if (!state.sabores.length) {
+        picked.innerHTML = `<p class="empty">Nenhum sabor ainda. O primeiro escolhido é o protagonista.</p>`;
+      } else {
+        picked.innerHTML = state.sabores
+          .map((id, i) => {
+            const ing = CDData.getIngredient(id);
+            const label = ing ? ing.label : id;
+            const role = i === 0 ? "protagonista" : String(i + 1);
+            return `<button type="button" class="chip on" data-s="${escapeHtml(id)}"><span class="ord">${role}</span>${escapeHtml(label)}</button>`;
+          })
+          .join("");
+        picked.querySelectorAll("[data-s]").forEach((btn) => {
+          btn.onclick = () => toggleSabor(btn.dataset.s);
+        });
+      }
+    }
+
+    const cats = $("#sabor-cats");
+    const catButtons = [{ id: "todas", label: "Todas" }].concat(groups);
+    if (cats) {
+      cats.innerHTML = catButtons
+        .map((c) => {
+          const on = state.saborCat === c.id;
+          return `<button type="button" class="cat-pill ${on ? "on" : ""}" data-cat="${c.id}" role="tab" aria-selected="${on}">${escapeHtml(c.label)}</button>`;
+        })
+        .join("");
+      cats.querySelectorAll("[data-cat]").forEach((btn) => {
+        btn.onclick = () => {
+          state.saborCat = btn.dataset.cat;
+          renderSabores();
+        };
+      });
+    }
+
+    const search = $("#sabor-search");
+    if (search && document.activeElement !== search) search.value = state.saborQuery;
+    if (search && !search.dataset.bound) {
+      search.dataset.bound = "1";
+      search.oninput = () => {
+        state.saborQuery = search.value;
+        renderSaborGroups();
+      };
+    }
+
+    renderSaborGroups();
 
     const comp = $("#complements");
     const list = CDMotor.suggestComplements(state.sabores);
     if (!state.sabores.length) {
       comp.innerHTML = `<h3>Complementos sugeridos</h3><p class="empty">Escolha um protagonista para ver afinidades [LIVRO].</p>`;
     } else {
+      const barOnly = list.length > 0 && list.every((c) => c.source === "BAR");
       comp.innerHTML =
         `<h3>Complementos sugeridos</h3>` +
-        list.map((c) => `<span class="comp-chip">${escapeHtml(c.label)}<em>[${c.source}]</em></span>`).join("") +
-        `<p class="hint">Até 3 sabores · o 1º é o protagonista.</p>`;
+        (list.length
+          ? list.map((c) => `<span class="comp-chip">${escapeHtml(c.label)}<em>[${c.source}]</em></span>`).join("")
+          : `<p class="empty">Sem sugestão extra.</p>`) +
+        (barOnly ? `<p class="hint">Sem pairing de livro — ponte leve de bar.</p>` : `<p class="hint">Até 3 sabores · o 1º é o protagonista.</p>`);
     }
+  }
+
+  function renderSaborGroups() {
+    const root = $("#sabor-groups");
+    if (!root) return;
+    const q = fold(state.saborQuery.trim());
+    const cat = state.saborCat || "todas";
+    const labels = {};
+    (CDData.SABOR_GROUPS || []).forEach((g) => {
+      labels[g.id] = g.label;
+    });
+    let list = CDData.INGREDIENTS.filter((ing) => (cat === "todas" ? true : ing.group === cat));
+    if (q) {
+      list = list.filter((ing) => fold(ing.label).includes(q) || fold(labels[ing.group] || "").includes(q));
+    }
+
+    const count = $("#sabor-count");
+    if (count) {
+      const total = CDData.INGREDIENTS.length;
+      count.textContent =
+        q || cat !== "todas"
+          ? `${list.length} de ${total} sabores · até 3 · o 1º é o protagonista.`
+          : `${total} sabores · até 3 · o 1º é o protagonista.`;
+    }
+
+    if (!list.length) {
+      root.innerHTML = `<p class="spirit-empty">Nenhum sabor com esse filtro.</p>`;
+      return;
+    }
+
+    const full = state.sabores.length >= 3;
+    const order = (CDData.SABOR_GROUPS || []).map((g) => g.id);
+    const grouped = [];
+    const seen = new Set();
+    order.forEach((id) => {
+      const items = list.filter((ing) => ing.group === id);
+      if (!items.length) return;
+      seen.add(id);
+      grouped.push({ id, items });
+    });
+    list.forEach((ing) => {
+      if (seen.has(ing.group)) return;
+      seen.add(ing.group);
+      grouped.push({ id: ing.group, items: list.filter((x) => x.group === ing.group) });
+    });
+
+    root.innerHTML = grouped
+      .map((g) => {
+        const title = labels[g.id] || g.id;
+        const chips = g.items
+          .map((ing) => {
+            const idx = state.sabores.indexOf(ing.id);
+            const on = idx >= 0;
+            const disabled = full && !on;
+            const ord = on ? `<span class="ord">${idx === 0 ? "1" : idx + 1}</span>` : "";
+            return `<button type="button" class="chip ${on ? "on" : ""}" data-s="${escapeHtml(ing.id)}" ${disabled ? "disabled" : ""}>${ord}${escapeHtml(ing.label)}</button>`;
+          })
+          .join("");
+        return `<section class="spirit-group"><h3>${escapeHtml(title)}</h3><div class="chip-grid">${chips}</div></section>`;
+      })
+      .join("");
+
+    root.querySelectorAll("[data-s]").forEach((btn) => {
+      btn.onclick = () => toggleSabor(btn.dataset.s);
+    });
   }
 
   function renderPerfil() {

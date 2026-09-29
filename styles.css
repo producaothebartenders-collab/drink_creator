@@ -287,7 +287,8 @@ h1.screen-title {
   padding: 4px 0 10px;
   margin-top: 12px;
 }
-#spirit-search {
+#spirit-search,
+#sabor-search {
   width: 100%;
   padding: 12px 14px;
   border-radius: 12px;
@@ -298,9 +299,33 @@ h1.screen-title {
   font-size: 14px;
   margin-bottom: 10px;
 }
-#spirit-search:focus {
+#spirit-search:focus,
+#sabor-search:focus {
   outline: none;
   border-color: var(--gold);
+}
+.sabor-picked {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 4px;
+  min-height: 28px;
+}
+.sabor-picked .empty {
+  color: var(--muted);
+  font-size: 13px;
+}
+.chip .ord {
+  display: inline-block;
+  margin-right: 6px;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+.chip:disabled {
+  opacity: 0.38;
+  cursor: not-allowed;
 }
 .cat-scroll {
   display: flex;
