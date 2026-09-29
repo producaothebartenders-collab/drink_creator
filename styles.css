@@ -615,6 +615,30 @@ h1.screen-title {
   margin-top: 2px;
   accent-color: var(--gold);
 }
+.custom-add {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+.custom-add input[type="text"] {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+}
+.custom-add input[type="text"]:focus {
+  outline: none;
+  border-color: var(--gold);
+}
+.custom-add .btn {
+  width: auto;
+  flex: 0 0 auto;
+}
 .catalog { margin-top: 10px; }
 .catalog-toggle { width: auto; }
 .catalog-panel {
